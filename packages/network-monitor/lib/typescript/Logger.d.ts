@@ -1,0 +1,190 @@
+export type LogType = 'request' | 'response' | 'error' | 'info' | 'database' | 'navigation';
+export interface LogEntry {
+    id: string;
+    type: LogType;
+    timestamp: string;
+    url?: string;
+    originalUrl?: string;
+    isRedirected?: boolean;
+    method?: string;
+    requestData?: any;
+    responseData?: any;
+    requestHeaders?: any;
+    responseHeaders?: any;
+    headers?: any;
+    status?: number;
+    message?: string;
+    durationMs?: number;
+    size?: string;
+}
+export interface CustomUrlEntry {
+    title: string;
+    url: string;
+}
+/**
+ * DebugLogger
+ *
+ * Singleton logger used by the debug monitor. Collects logs for requests,
+ * responses, errors, info, database and navigation events and notifies
+ * subscribers when new log entries are available.
+ */
+declare class DebugLogger {
+    private static instance;
+    private logs;
+    private listeners;
+    isNetworkPatched: boolean;
+    private baseUrl;
+    private customUrls;
+    private notifyTimeout;
+    /**
+     * Private constructor to enforce singleton pattern. Use DebugLogger.getInstance() to access the shared instance.
+     */
+    private constructor();
+    /**
+     * getInstance
+     *
+     * Return the shared DebugLogger singleton instance.
+     */
+    static getInstance(): DebugLogger;
+    /**
+     * setBaseUrl
+     *
+     * Set the base URL used for redirecting requests inside the monitor.
+     * @param url - Base URL to apply
+     */
+    setBaseUrl(url: string): void;
+    /**
+     * getBaseUrl
+     *
+     * @returns Current base URL string
+     */
+    getBaseUrl(): string;
+    /**
+     * getCustomUrls
+     *
+     * @returns Array of custom URL entries
+     */
+    getCustomUrls(): CustomUrlEntry[];
+    /**
+     * addCustomUrl
+     *
+     * Add a custom URL entry and notify subscribers.
+     * @param entry - Custom URL to add
+     */
+    addCustomUrl(entry: CustomUrlEntry): void;
+    /**
+     * removeCustomUrl
+     *
+     * Remove a custom URL entry and reset base if it was active.
+     * @param url - URL string to remove
+     */
+    removeCustomUrl(url: string): void;
+    /**
+     * notify
+     *
+     * Notify all subscribers with the latest logs. Uses a debounce mechanism to batch updates.
+     */
+    private notify;
+    /**
+     * calculateSize
+     *
+     * Calculate the size of the given data in kilobytes.
+     * @param data - Data to calculate size for
+     * @returns Size string in kilobytes
+     */
+    private calculateSize;
+    /**
+     * logRequest
+     *
+     * Record a network request entry.
+     * @returns request id string
+     */
+    logRequest(data: {
+        url?: string;
+        originalUrl?: string;
+        isRedirected?: boolean;
+        method?: string;
+        data?: any;
+        headers?: any;
+        reqId?: string;
+        _isAxios?: boolean;
+        axiosConfig?: any;
+    }): string;
+    /**
+     * logResponse
+     *
+     * Attach response data to an existing request log or create a standalone
+     * response record.
+     */
+    logResponse(data: {
+        reqId?: string;
+        status: number;
+        data?: any;
+        url?: string;
+        originalUrl?: string;
+        isRedirected?: boolean;
+        method?: string;
+        headers?: any;
+    }): void;
+    /**
+     * logError
+     *
+     * Record a network or generic error for correlation in the monitor UI.
+     */
+    logError(data: {
+        reqId?: string;
+        message?: string;
+        status?: number;
+        data?: any;
+        url?: string;
+        method?: string;
+    }): void;
+    /**
+     * logInfo
+     *
+     * Add a general informational log entry (used by the console monitor).
+     */
+    logInfo(message: string, data?: any): void;
+    /**
+     * logDatabase
+     *
+     * Record a database query / event for debugging.
+     */
+    logDatabase(query: string, data?: any): void;
+    /**
+     * logNavigation
+     *
+     * Record a navigation event (route + params) for debugging.
+     */
+    logNavigation(route: string, params?: any): void;
+    /**
+     * getLogs
+     *
+     * @returns A shallow copy of the recorded logs
+     */
+    getLogs(): LogEntry[];
+    /**
+     * clearLogs
+     *
+     * Remove all recorded logs and notify subscribers.
+     */
+    clearLogs(): void;
+    /**
+     * subscribe
+     *
+     * Subscribe to log updates. Returns an unsubscribe function.
+     */
+    subscribe(listener: (logs: LogEntry[]) => void): () => void;
+    /**
+     * init
+     *
+     * Placeholder for future initialization logic.
+     */
+    init(): void;
+}
+/**
+ * Shared logger instance used by the package.
+ */
+export declare const Logger: DebugLogger;
+export default Logger;
+//# sourceMappingURL=Logger.d.ts.map

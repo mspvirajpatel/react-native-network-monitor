@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "name": "network-monitor-monorepo",
+  "workspaces": [
+    "packages/network-monitor",
+    "examples/*"
+  ]
+}

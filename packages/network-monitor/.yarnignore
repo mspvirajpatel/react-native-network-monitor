@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output (keep lib/ for npm)
+# lib/
+
+# Example app
+examples/
+
+# Tests
+__tests__/
+__fixtures__/
+__mocks__/
+coverage/
+
+# Development files
+.DS_Store
+*.log
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Misc
+*.tgz
+.eslintrc*
+.prettierrc*
+babel.config.*
+jest.config.*
+metro.config.*
+tsconfig.json
+tsconfig.build.json
