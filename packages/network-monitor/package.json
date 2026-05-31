@@ -64,6 +64,15 @@
   "peerDependenciesMeta": {
     "react-native-safe-area-context": {
       "optional": false
+    },
+    "expo-file-system": {
+      "optional": true
+    },
+    "expo-sharing": {
+      "optional": true
+    },
+    "react-native-fs": {
+      "optional": true
     }
   },
   "react-native-builder-bob": {

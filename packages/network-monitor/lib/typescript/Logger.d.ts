@@ -1,4 +1,4 @@
-export type LogType = 'request' | 'response' | 'error' | 'info' | 'database' | 'navigation';
+export type LogType = 'request' | 'response' | 'error' | 'info' | 'database' | 'navigation' | 'websocket' | 'performance';
 export interface LogEntry {
     id: string;
     type: LogType;
@@ -180,6 +180,19 @@ declare class DebugLogger {
      *
      * Placeholder for future initialization logic.
      */
+    logWebSocket(data: {
+        url: string;
+        event: 'open' | 'message' | 'close' | 'error';
+        message?: string;
+        data?: any;
+        status?: number;
+    }): void;
+    logPerformance(data: {
+        fps: number;
+        jsHeapSize?: number;
+        jsHeapLimit?: number;
+        droppedFrames?: number;
+    }): void;
     init(): void;
 }
 /**

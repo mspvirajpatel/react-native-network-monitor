@@ -3,6 +3,7 @@ export interface DebugTriggerProps {
     children?: ReactNode;
     password?: string;
     passwordFrequency?: "all-time" | "per-install" | "app-active";
+    passwordOptional?: boolean;
     enableShake?: boolean;
     clicksNeeded?: number;
     isDemo?: boolean;
@@ -15,6 +16,8 @@ export interface DebugTriggerProps {
     prodUrl?: string;
     testUrl?: string;
     enabled?: boolean;
+    enableTapGesture?: boolean;
+    floatingButtonMargin?: number;
     checkAccess?: () => boolean | Promise<boolean>;
     language?: "az" | "en" | "ru" | "tr" | "auto";
     theme?: "light" | "dark" | "auto";
@@ -41,5 +44,5 @@ export interface DebugTriggerProps {
  * @param language - Language for the monitor UI ('az', 'en', 'ru', 'tr', or 'auto' to detect from device)
  * @returns The wrapped children and the debug monitor when triggered
  */
-export declare const DebugTrigger: ({ children, password, passwordFrequency, enableShake, clicksNeeded, isDemo, onEnvChange, onBaseUrlChange, baseUrls, prodUrl, testUrl, enabled, checkAccess, language, theme, }: DebugTriggerProps) => React.JSX.Element;
+export declare const DebugTrigger: ({ children, password, passwordFrequency, passwordOptional, enableShake, clicksNeeded, isDemo, onEnvChange, onBaseUrlChange, baseUrls, prodUrl, testUrl, enabled, enableTapGesture, floatingButtonMargin, checkAccess, language, theme, }: DebugTriggerProps) => React.JSX.Element;
 //# sourceMappingURL=DebugTrigger.d.ts.map

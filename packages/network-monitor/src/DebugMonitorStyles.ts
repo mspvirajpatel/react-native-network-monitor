@@ -1,4 +1,3 @@
-/* eslint-disable react-native/sort-styles */
 import { Platform, StyleSheet } from 'react-native';
 
 export interface ThemeColors {
@@ -7,13 +6,16 @@ export interface ThemeColors {
   surfaceLight: string;
   surfaceElevated: string;
   primary: string;
+  primaryDim: string;
   secondary: string;
   text: string;
   textDim: string;
   textSubtle: string;
   success: string;
+  successDim: string;
   warning: string;
   error: string;
+  errorDim: string;
   border: string;
   accent: string;
   glass: string;
@@ -22,502 +24,613 @@ export interface ThemeColors {
   shadow: string;
   overlay: string;
   jsonText: string;
+  jsonKey: string;
+  jsonString: string;
+  jsonNumber: string;
+  cardShadow: string;
+  tabActive: string;
+  tabInactive: string;
 }
 
 export const DARK_COLORS: ThemeColors = {
-  background: '#020617',
-  surface: '#0F172A',
-  surfaceLight: '#1E293B',
-  surfaceElevated: '#334155',
-  primary: '#38BDF8',
-  secondary: '#94A3B8',
-  text: '#F8FAFC',
-  textDim: '#94A3B8',
-  textSubtle: '#475569',
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#F43F5E',
-  border: '#1E293B',
-  accent: '#A855F7',
-  glass: 'rgba(15, 23, 42, 0.6)',
+  background: '#0B0B14',
+  surface: '#14141F',
+  surfaceLight: '#1C1C2E',
+  surfaceElevated: '#252540',
+  primary: '#7C5CFC',
+  primaryDim: '#7C5CFC18',
+  secondary: '#22D3EE',
+  text: '#EEEEFF',
+  textDim: '#8888AA',
+  textSubtle: '#555577',
+  success: '#34D399',
+  successDim: '#34D39918',
+  warning: '#FBBF24',
+  error: '#FB7185',
+  errorDim: '#FB718518',
+  border: '#1E1E32',
+  accent: '#A78BFA',
+  glass: 'rgba(20, 20, 40, 0.85)',
   highlight: 'rgba(255,255,255,0.04)',
   transparent: 'transparent',
   shadow: '#000000',
-  overlay: 'rgba(2, 6, 23, 0.92)',
-  jsonText: '#34D399'
+  overlay: 'rgba(0, 0, 0, 0.75)',
+  jsonText: '#34D399',
+  jsonKey: '#7C5CFC',
+  jsonString: '#22D3EE',
+  jsonNumber: '#FBBF24',
+  cardShadow: 'rgba(124, 92, 252, 0.06)',
+  tabActive: '#7C5CFC',
+  tabInactive: '#555577',
 };
 
 export const LIGHT_COLORS: ThemeColors = {
-  background: '#F1F5F9',
+  background: '#F4F4F9',
   surface: '#FFFFFF',
-  surfaceLight: '#F8FAFC',
-  surfaceElevated: '#E2E8F0',
-  primary: '#0EA5E9',
-  secondary: '#64748B',
-  text: '#0F172A',
-  textDim: '#64748B',
-  textSubtle: '#94A3B8',
+  surfaceLight: '#F8F8FF',
+  surfaceElevated: '#E8E8F0',
+  primary: '#6C5CE7',
+  primaryDim: '#6C5CE712',
+  secondary: '#0891B2',
+  text: '#1A1A2E',
+  textDim: '#6B6B8A',
+  textSubtle: '#9A9AB0',
   success: '#059669',
+  successDim: '#05966912',
   warning: '#D97706',
-  error: '#E11D48',
-  border: '#E2E8F0',
-  accent: '#9333EA',
-  glass: 'rgba(241, 245, 249, 0.8)',
-  highlight: 'rgba(0,0,0,0.04)',
+  error: '#DC2626',
+  errorDim: '#DC262612',
+  border: '#E2E2F0',
+  accent: '#7C3AED',
+  glass: 'rgba(255, 255, 255, 0.85)',
+  highlight: 'rgba(0,0,0,0.03)',
   transparent: 'transparent',
-  shadow: '#64748B',
-  overlay: 'rgba(15, 23, 42, 0.7)',
-  jsonText: '#047857'
+  shadow: '#8888AA',
+  overlay: 'rgba(26, 26, 46, 0.6)',
+  jsonText: '#059669',
+  jsonKey: '#6C5CE7',
+  jsonString: '#0891B2',
+  jsonNumber: '#D97706',
+  cardShadow: 'rgba(108, 92, 231, 0.08)',
+  tabActive: '#6C5CE7',
+  tabInactive: '#9A9AB0',
 };
 
-/**
- * getColors
- *
- * Resolve the color palette for a given theme.
- * @param theme - 'dark' | 'light'
- * @returns ThemeColors palette
- */
 export const getColors = (theme: 'dark' | 'light'): ThemeColors =>
   theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
 
-// Backwards-compat export (dark palette)
 export const COLORS = DARK_COLORS;
 
-/**
- * styleSheet
- *
- * Centralized styles for the Debug Monitor component.
- * Accepts the resolved ThemeColors so styles update with the theme.
- */
+const FONT = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+
 const styleSheet = (C: ThemeColors = DARK_COLORS) =>
   StyleSheet.create({
     container: { backgroundColor: C.background, flex: 1 },
 
-    // ── Header ──────────────────────────────────────────────────────────────
+    // ── Header ────────────────────────────────────────────────────────────
     header: {
-      alignItems: 'center',
       backgroundColor: C.surface,
       borderBottomColor: C.border,
       borderBottomWidth: 1,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
       paddingHorizontal: 20,
-      paddingVertical: 16,
-      paddingTop: Platform.OS === 'android' ? 36 : 16
+      paddingTop: Platform.OS === 'android' ? 44 : 0,
     },
-    headerActions: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-    headerInfo: { flex: 1 },
-    titleRow: { alignItems: 'center', flexDirection: 'row', marginBottom: 3 },
-    titleDot: {
+    headerTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 14,
+    },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    headerLogo: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
       backgroundColor: C.primary,
-      borderRadius: 4,
-      height: 8,
-      marginRight: 8,
-      shadowColor: C.primary,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.8,
-      shadowRadius: 6,
-      width: 8
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    headerTitle: {
-      color: C.text,
-      fontSize: 15,
-      fontWeight: '900',
-      letterSpacing: 1.2
-    },
-    headerSubtitle: {
+    headerLogoText: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
+    headerTitle: { color: C.text, fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+    headerCount: {
       color: C.textDim,
       fontSize: 11,
       fontWeight: '600',
-      letterSpacing: 0.3
+      backgroundColor: C.surfaceLight,
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      overflow: 'hidden',
     },
-    closeBtn: {
+    headerActions: { flexDirection: 'row', gap: 8 },
+    headerBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      backgroundColor: C.surfaceLight,
       alignItems: 'center',
-      backgroundColor: C.surfaceElevated,
-      borderRadius: 20,
       justifyContent: 'center',
-      paddingHorizontal: 14,
-      paddingVertical: 7
     },
-    closeBtnText: {
-      color: C.primary,
-      fontSize: 10,
-      fontWeight: '800',
-      letterSpacing: 0.5
-    },
+    headerBtnText: { fontSize: 15, color: C.textDim },
 
-    // ── Tabs ────────────────────────────────────────────────────────────────
-    tabContainer: {
+    // ── Tab Bar ───────────────────────────────────────────────────────────
+    tabBar: {
       backgroundColor: C.surface,
-      borderBottomColor: C.border,
-      borderBottomWidth: 1
+      paddingBottom: 0,
     },
     tabScroll: { paddingHorizontal: 12 },
-    tab: {
+    tabItem: {
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      position: 'relative',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 16,
-      position: 'relative'
     },
-    tabActive: {},
-    activeTabDot: {
-      backgroundColor: C.primary,
-      borderRadius: 1.5,
-      bottom: 6,
-      height: 3,
-      position: 'absolute',
-      width: 20
-    },
-
     tabText: {
-      color: C.textDim,
       fontSize: 11,
       fontWeight: '700',
-      letterSpacing: 0.5
+      letterSpacing: 0.3,
     },
-    tabTextActive: { color: C.primary },
+    tabTextActive: { color: C.tabActive },
+    tabTextInactive: { color: C.tabInactive },
+    tabBadge: {
+      fontSize: 9,
+      fontWeight: '700',
+      marginLeft: 3,
+    },
+    tabActiveLine: {
+      height: 2.5,
+      backgroundColor: C.tabActive,
+      borderRadius: 1.5,
+      position: 'absolute',
+      bottom: 0,
+    },
 
-    // ── Search ──────────────────────────────────────────────────────────────
-    searchRow: { paddingHorizontal: 15, paddingTop: 12, paddingBottom: 6 },
+    // ── Search ────────────────────────────────────────────────────────────
+    searchRow: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 6 },
     searchBox: {
-      alignItems: 'center',
-      backgroundColor: C.surface,
-      borderColor: C.border,
-      borderRadius: 14,
-      borderWidth: 1,
       flexDirection: 'row',
-      height: 46,
-      paddingHorizontal: 14
+      alignItems: 'center',
+      backgroundColor: C.surfaceLight,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      height: 42,
+      borderWidth: 1,
+      borderColor: C.border,
     },
-    searchIcon: { fontSize: 14, marginRight: 8 },
     searchInput: {
       color: C.text,
       flex: 1,
-      fontSize: 14,
-      fontWeight: '500'
+      fontSize: 13,
+      fontWeight: '500',
+      marginLeft: 10,
     },
-    clearSearch: {
-      color: C.textDim,
-      fontSize: 18,
-      paddingHorizontal: 4
-    },
+    clearSearch: { color: C.textDim, fontSize: 16, paddingHorizontal: 4 },
 
-    // ── Filter pills (method / status) ──────────────────────────────────────
+    // ── Filter Pills ──────────────────────────────────────────────────────
     filterRow: {
       flexDirection: 'row',
       gap: 8,
-      paddingHorizontal: 15,
-      paddingBottom: 10
+      paddingHorizontal: 16,
+      paddingBottom: 12,
     },
     filterPill: {
-      alignItems: 'center',
-      backgroundColor: C.surface,
-      borderColor: C.border,
-      borderRadius: 20,
-      borderWidth: 1,
       paddingHorizontal: 14,
-      paddingVertical: 6
-    },
-    filterPillActive: {
-      backgroundColor: C.primary + '18',
-      borderColor: C.primary
-    },
-    filterPillText: {
-      color: C.textDim,
-      fontSize: 11,
-      fontWeight: '700',
-      letterSpacing: 0.3
-    },
-    filterPillTextActive: { color: C.primary },
-
-    // ── Log list ────────────────────────────────────────────────────────────
-    listContent: { padding: 12, paddingBottom: 40 },
-    logItem: {
-      backgroundColor: C.surface,
-      borderColor: C.border,
+      paddingVertical: 6,
       borderRadius: 16,
       borderWidth: 1,
-      flexDirection: 'row',
-      marginBottom: 8,
+      borderColor: C.border,
+      backgroundColor: C.surfaceLight,
+    },
+    filterPillActive: {
+      backgroundColor: C.primaryDim,
+      borderColor: C.primary,
+    },
+    filterPillText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
+    filterPillTextActive: { color: C.primary },
+    filterPillTextInactive: { color: C.textDim },
+
+    // ── Log List ──────────────────────────────────────────────────────────
+    listContent: { padding: 16, paddingBottom: 40 },
+    logItem: {
+      backgroundColor: C.surface,
+      borderRadius: 14,
+      marginBottom: 10,
       overflow: 'hidden',
-      shadowColor: C.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.06,
-      shadowRadius: 4,
-      elevation: 1
+      shadowColor: C.cardShadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 1,
+      shadowRadius: 8,
+      elevation: 2,
     },
     logIndicator: { width: 4 },
-    logBody: { flex: 1, padding: 14 },
-    logHeader: {
-      alignItems: 'center',
+    logBody: { padding: 14 },
+    logRow: {
       flexDirection: 'row',
-      marginBottom: 8
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 8,
     },
-    badge: {
-      borderRadius: 8,
-      marginRight: 8,
-      paddingHorizontal: 9,
-      paddingVertical: 3
+    logChip: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
     },
-    logMethod: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
-    statusChip: {
-      borderRadius: 8,
-      marginRight: 8,
-      paddingHorizontal: 9,
-      paddingVertical: 3
+    logChipText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.4 },
+    logStatusChip: {
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 5,
     },
-    statusChipText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
-    logStatus: { fontSize: 12, fontWeight: '900', marginHorizontal: 6 },
+    logStatusText: { fontSize: 9, fontWeight: '900' },
     logTime: {
-      color: C.textDim,
-      fontSize: 10,
+      color: C.textSubtle,
+      fontSize: 9,
       fontWeight: '600',
-      marginLeft: 'auto'
+      marginLeft: 'auto',
     },
     logUrl: {
       color: C.text,
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: '600',
-      lineHeight: 20
+      lineHeight: 18,
     },
     logMetaBox: {
-      alignItems: 'center',
       flexDirection: 'row',
       gap: 6,
-      marginTop: 10
+      marginTop: 10,
     },
     metaBadge: {
       backgroundColor: C.surfaceLight,
-      borderColor: C.border,
       borderRadius: 6,
-      borderWidth: 1,
       paddingHorizontal: 8,
-      paddingVertical: 3
+      paddingVertical: 3,
     },
     logMeta: { color: C.textDim, fontSize: 10, fontWeight: '700' },
 
-    // ── Empty state ─────────────────────────────────────────────────────────
-    emptyContainer: { alignItems: 'center', flex: 1, justifyContent: 'center', padding: 60 },
-    emptyIcon: { fontSize: 44, marginBottom: 16 },
-    emptyText: {
-      color: C.textDim,
-      fontSize: 15,
-      fontWeight: '600',
-      marginBottom: 6,
-      textAlign: 'center'
+    // ── Empty State ───────────────────────────────────────────────────────
+    emptyContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 60,
     },
-    emptySubText: {
-      color: C.textSubtle,
-      fontSize: 12,
-      fontWeight: '400',
-      textAlign: 'center'
-    },
+    emptyIcon: { fontSize: 40, marginBottom: 16 },
+    emptyText: { color: C.textDim, fontSize: 14, fontWeight: '700', marginBottom: 4 },
+    emptySubText: { color: C.textSubtle, fontSize: 11, textAlign: 'center' },
 
-    // ── Settings panel ──────────────────────────────────────────────────────
+    // ── Settings Panel ────────────────────────────────────────────────────
     settingsContainer: { flex: 1, padding: 20 },
-    section: { marginBottom: 24 },
-    sectionHeaderBox: {
-      borderLeftColor: C.primary,
-      borderLeftWidth: 3,
+    settingsSection: { marginBottom: 28 },
+    settingsSectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
       marginBottom: 12,
-      paddingLeft: 10
     },
-    sectionTitle: {
+    settingsSectionLine: {
+      width: 3,
+      height: 16,
+      backgroundColor: C.primary,
+      borderRadius: 2,
+    },
+    settingsSectionTitle: {
       color: C.textDim,
       fontSize: 10,
-      fontWeight: '900',
-      letterSpacing: 1.8
+      fontWeight: '800',
+      letterSpacing: 1.5,
     },
-    card: {
+    settingsCard: {
       backgroundColor: C.surface,
-      borderColor: C.border,
-      borderRadius: 20,
-      borderWidth: 1,
+      borderRadius: 16,
       overflow: 'hidden',
-      shadowColor: C.shadow,
+      shadowColor: C.cardShadow,
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
+      shadowOpacity: 1,
       shadowRadius: 8,
-      elevation: 2
+      elevation: 2,
     },
+    cardInner: { padding: 20 },
+
+    // ── URL Options ───────────────────────────────────────────────────────
+    urlOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+      borderBottomColor: C.border,
+      borderBottomWidth: 1,
+    },
+    urlOptionLast: { borderBottomWidth: 0 },
+    urlOptionActive: { backgroundColor: C.primaryDim },
+    urlOptionInfo: { flex: 1 },
+    urlOptionTitle: { color: C.text, fontSize: 13, fontWeight: '700', marginBottom: 2 },
+    urlOptionTitleActive: { color: C.primary },
+    urlOptionUrl: { color: C.textDim, fontSize: 11 },
+    optionActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    deleteBtn: {
+      width: 26,
+      height: 26,
+      borderRadius: 8,
+      backgroundColor: C.errorDim,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    deleteBtnText: { color: C.error, fontSize: 12, fontWeight: '900' },
+    activeDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: C.success,
+    },
+
+    // ── Input ─────────────────────────────────────────────────────────────
     inputLabel: {
       color: C.textDim,
       fontSize: 10,
       fontWeight: '800',
       letterSpacing: 1,
-      marginBottom: 10
+      marginBottom: 10,
     },
     textInput: {
-      borderBottomColor: C.primary + '40',
-      borderBottomWidth: 1.5,
       color: C.text,
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: '600',
-      marginBottom: 20,
-      paddingVertical: 10
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      backgroundColor: C.surfaceLight,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: C.border,
+      marginBottom: 16,
     },
     saveBtn: {
-      alignItems: 'center',
       backgroundColor: C.primary,
-      borderRadius: 14,
-      elevation: 4,
-      padding: 16,
-      shadowColor: C.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8
+      borderRadius: 12,
+      padding: 14,
+      alignItems: 'center',
     },
     saveBtnText: {
       color: '#FFFFFF',
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '900',
-      letterSpacing: 1
+      letterSpacing: 1,
     },
     toolBtn: {
-      alignItems: 'center',
+      borderWidth: 1,
       borderColor: C.border,
-      borderRadius: 14,
-      borderWidth: 1.5,
-      margin: 16,
-      padding: 16
+      borderRadius: 12,
+      padding: 14,
+      alignItems: 'center',
     },
     toolBtnText: {
       color: C.text,
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '700',
-      letterSpacing: 0.5
-    },
-    cardInner: { padding: 20 },
-
-    // ── URL options ─────────────────────────────────────────────────────────
-    urlOption: {
-      alignItems: 'center',
-      borderBottomColor: C.border,
-      borderBottomWidth: 1,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      padding: 16
-    },
-    urlOptionLast: { borderBottomWidth: 0 },
-    urlOptionActive: { backgroundColor: C.primary + '10' },
-    urlOptionInfo: { flex: 1 },
-    urlOptionTitle: { color: C.text, fontSize: 14, fontWeight: '700', marginBottom: 3 },
-    urlOptionTitleActive: { color: C.primary },
-    urlOptionUrl: { color: C.textDim, fontSize: 11.5 },
-    optionActions: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-    deleteBtn: {
-      alignItems: 'center',
-      backgroundColor: C.error + '18',
-      borderRadius: 12,
-      height: 28,
-      justifyContent: 'center',
-      width: 28
-    },
-    deleteBtnText: { color: C.error, fontSize: 14, fontWeight: '900' },
-    activeDot: {
-      backgroundColor: C.success,
-      borderRadius: 5,
-      height: 10,
-      shadowColor: C.success,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.6,
-      shadowRadius: 6,
-      width: 10
+      letterSpacing: 0.3,
     },
 
-    // ── Detail modal ────────────────────────────────────────────────────────
-    detailsModal: { backgroundColor: C.background, flex: 1 },
-    detailsHeader: {
+    // ── Detail Modal (Bottom Sheet) ──────────────────────────────────────
+    detailOverlay: {
+      flex: 1,
+      backgroundColor: C.overlay,
+      justifyContent: 'flex-end',
+    },
+    detailSheet: {
       backgroundColor: C.surface,
-      borderBottomColor: C.border,
-      borderBottomWidth: 1,
-      paddingBottom: 0
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      maxHeight: '88%',
+      shadowColor: C.shadow,
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 16,
+      elevation: 20,
     },
-    detailsTopRow: {
-      alignItems: 'center',
+    detailHandle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: C.textSubtle,
+      alignSelf: 'center',
+      marginTop: 10,
+      marginBottom: 4,
+    },
+    detailHeader: {
       flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 20,
-      paddingVertical: 16
+      paddingVertical: 14,
+      borderBottomColor: C.border,
+      borderBottomWidth: 1,
     },
-    detailsPerfText: {
-      color: C.text,
-      fontSize: 15,
-      fontWeight: '700'
+    detailBack: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      backgroundColor: C.surfaceLight,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    backBtnText: { color: C.primary, fontSize: 26, fontWeight: '300' },
-    backBtn: { paddingRight: 12, paddingVertical: 4 },
-    menuBtn: { paddingLeft: 12, paddingVertical: 4 },
-    menuBtnText: { color: C.primary, fontSize: 26, fontWeight: '600' },
-    dropdownMenu: {
-      backgroundColor: C.surface,
-      borderColor: C.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      elevation: 10,
+    detailBackText: { color: C.primary, fontSize: 18, fontWeight: '700' },
+    detailTitle: { color: C.text, fontSize: 14, fontWeight: '800' },
+    detailMenu: { padding: 6 },
+    detailMenuText: { color: C.textDim, fontSize: 20, fontWeight: '700' },
+    detailDropdown: {
+      backgroundColor: C.surfaceElevated,
+      borderRadius: 12,
       position: 'absolute',
       right: 16,
+      top: 52,
+      width: 160,
+      zIndex: 1000,
       shadowColor: C.shadow,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.15,
-      shadowRadius: 20,
-      top: 60,
-      width: 180,
-      zIndex: 1000
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 12,
+      elevation: 10,
     },
-    menuItem: {
+    detailDropdownItem: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
       borderBottomColor: C.border,
       borderBottomWidth: 1,
-      paddingHorizontal: 18,
-      paddingVertical: 16
     },
-    menuItemText: { color: C.text, fontSize: 14, fontWeight: '700' },
-    detailsTabs: {
+    detailDropdownText: { color: C.text, fontSize: 13, fontWeight: '600' },
+
+    // ── Detail Tabs ───────────────────────────────────────────────────────
+    detailTabs: {
       flexDirection: 'row',
       paddingHorizontal: 20,
-      paddingTop: 4
+      paddingTop: 4,
+      borderBottomColor: C.border,
+      borderBottomWidth: 1,
     },
     detailTab: {
-      alignItems: 'center',
-      borderBottomColor: C.transparent,
-      borderBottomWidth: 2.5,
       flex: 1,
-      paddingVertical: 14
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: 2.5,
+      borderBottomColor: C.transparent,
     },
     detailTabActive: { borderBottomColor: C.primary },
-    detailTabText: { color: C.textDim, fontSize: 13, fontWeight: '700' },
+    detailTabText: { fontSize: 12, fontWeight: '700' },
     detailTabTextActive: { color: C.primary },
-    detailsContent: { flex: 1, padding: 20 },
+    detailTabTextInactive: { color: C.textDim },
+    detailContent: { padding: 20, paddingBottom: 40 },
 
-    // ── Section blocks (detail view) ────────────────────────────────────────
-    sectionBox: { marginBottom: 28 },
+    // ── Section Blocks (detail view) ──────────────────────────────────────
+    sectionBox: { marginBottom: 24 },
     sectionLabel: {
       color: C.textDim,
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 1.2,
+      marginBottom: 8,
+    },
+    sectionValue: {
+      color: C.text,
+      fontSize: 14,
+      fontWeight: '500',
+      lineHeight: 22,
+    },
+    jsonBox: {
+      backgroundColor: C.surfaceLight,
+      borderRadius: 12,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    jsonText: {
+      color: C.jsonText,
+      fontFamily: FONT,
+      fontSize: 11,
+      lineHeight: 18,
+    },
+
+    // ── Performance Panel ─────────────────────────────────────────────────
+    perfContainer: { flex: 1, padding: 20 },
+    perfCard: {
+      backgroundColor: C.surface,
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 14,
+      shadowColor: C.cardShadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 1,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    perfRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    perfLabel: { color: C.textDim, fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
+    perfValue: { color: C.text, fontSize: 20, fontWeight: '900' },
+    perfValueGood: { color: C.success },
+    perfValueWarning: { color: C.warning },
+    perfValueError: { color: C.error },
+    fpsBar: {
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: C.surfaceLight,
+      marginTop: 4,
+      overflow: 'hidden',
+    },
+    fpsBarFill: { height: '100%', borderRadius: 3 },
+    perfToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: C.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 14,
+      shadowColor: C.cardShadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 1,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    perfToggleText: { color: C.text, fontSize: 13, fontWeight: '700' },
+    toggleTrack: {
+      width: 46,
+      height: 26,
+      borderRadius: 13,
+      justifyContent: 'center',
+      paddingHorizontal: 2,
+    },
+    toggleTrackActive: { backgroundColor: C.primary },
+    toggleTrackInactive: { backgroundColor: C.surfaceElevated },
+    toggleThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFFFF' },
+
+    // ── WebSocket Panel ───────────────────────────────────────────────────
+    wsContainer: { flex: 1, padding: 20 },
+    wsItem: {
+      backgroundColor: C.surface,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 8,
+      shadowColor: C.cardShadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 1,
+      shadowRadius: 4,
+      elevation: 1,
+    },
+    wsHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+    wsBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 6,
+      marginRight: 8,
+    },
+    wsBadgeText: { fontSize: 8, fontWeight: '900', letterSpacing: 0.3 },
+    wsUrl: { color: C.text, fontSize: 11, fontWeight: '600', flex: 1 },
+    wsTime: { color: C.textDim, fontSize: 9, fontWeight: '600' },
+    wsMessage: { color: C.textDim, fontSize: 11, marginTop: 4, lineHeight: 16 },
+
+    // ── Device Info ───────────────────────────────────────────────────────
+    deviceRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: C.surfaceLight,
+      borderRadius: 10,
+      padding: 14,
+      marginBottom: 6,
+    },
+    deviceLabel: { color: C.textDim, fontSize: 12, fontWeight: '600', flex: 1 },
+    deviceValue: { color: C.text, fontSize: 12, fontWeight: '700', textAlign: 'right', flex: 1 },
+    deviceSectionTitle: {
+      color: C.primary,
       fontSize: 10,
       fontWeight: '900',
       letterSpacing: 1.5,
       marginBottom: 10,
-      textTransform: 'uppercase'
+      marginTop: 4,
     },
-    sectionValue: {
-      color: C.text,
-      fontSize: 15,
-      fontWeight: '500',
-      lineHeight: 24
-    },
-    jsonBox: {
-      backgroundColor: C.surfaceLight,
-      borderColor: C.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      padding: 16
-    },
-    jsonText: {
-      color: C.jsonText,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 12,
-      lineHeight: 20
-    }
   });
 
 export default styleSheet;

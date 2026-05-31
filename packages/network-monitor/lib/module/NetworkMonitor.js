@@ -19,6 +19,9 @@ const getGlobalXMLHttpRequest = () => {
   }
   return XMLHttpRequest;
 };
+export const isInternalUrl = originalUrl => {
+  return originalUrl.includes('localhost:8081') || originalUrl.includes('10.0.2.2:8081') || originalUrl.includes('127.0.0.1') || originalUrl.includes('/symbolicate') || originalUrl.includes('.bundle') || originalUrl.includes('.hot-update');
+};
 
 /**
  * getRedirectedUrl
@@ -32,8 +35,7 @@ const getGlobalXMLHttpRequest = () => {
 const getRedirectedUrl = originalUrl => {
   const baseUrl = Logger.getBaseUrl();
   if (!baseUrl) return originalUrl;
-  const isInternal = originalUrl.includes('localhost:8081') || originalUrl.includes('10.0.2.2:8081') || originalUrl.includes('127.0.0.1') || originalUrl.includes('/symbolicate') || originalUrl.includes('.bundle') || originalUrl.includes('.hot-update');
-  if (isInternal) return originalUrl;
+  if (isInternalUrl(originalUrl)) return originalUrl;
   try {
     if (originalUrl.startsWith('/')) {
       const base = new URL(baseUrl);
@@ -86,9 +88,14 @@ export const setupNetworkMonitor = () => {
           headers = input.headers || headers;
         }
         if (init) {
-          method = (init.method || method).toUpperCase();
+          method = (init.method || method || '').toUpperCase();
           body = init.body || body;
           headers = init.headers || headers;
+        }
+        if (typeof body === 'string') {
+          try {
+            body = JSON.parse(body);
+          } catch (_) {}
         }
       } catch (e) {
         url = 'Unknown URL';
@@ -186,7 +193,7 @@ export const setupNetworkMonitor = () => {
   XHR.prototype._isPatchedByDebugLogger = true;
   const originalSetRequestHeader = XHR.prototype.setRequestHeader;
   XHR.prototype.open = function (method, url) {
-    this._method = method.toUpperCase();
+    this._method = (method || '').toUpperCase();
     const originalUrl = typeof url === 'string' ? url : url.toString();
     this._url = originalUrl;
     this._debugHeaders = {};
@@ -206,12 +213,18 @@ export const setupNetworkMonitor = () => {
   };
   XHR.prototype.send = function (body) {
     const xhr = this;
+    let parsedBody = body;
+    if (typeof parsedBody === 'string') {
+      try {
+        parsedBody = JSON.parse(parsedBody);
+      } catch (_) {}
+    }
     const reqId = Logger.logRequest({
       url: xhr._redirectedUrl || xhr._url,
       originalUrl: xhr._url,
       isRedirected: !!xhr._redirectedUrl && xhr._redirectedUrl !== xhr._url,
       method: xhr._method,
-      data: body,
+      data: parsedBody,
       headers: xhr._debugHeaders
     });
 

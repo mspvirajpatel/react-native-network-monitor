@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-export type LogType = 'request' | 'response' | 'error' | 'info' | 'database' | 'navigation';
+export type LogType = 'request' | 'response' | 'error' | 'info' | 'database' | 'navigation' | 'websocket' | 'performance';
 
 export interface LogEntry {
   id: string;
@@ -372,6 +372,44 @@ class DebugLogger {
    *
    * Placeholder for future initialization logic.
    */
+  public logWebSocket(data: {
+    url: string;
+    event: 'open' | 'message' | 'close' | 'error';
+    message?: string;
+    data?: any;
+    status?: number;
+  }) {
+    const icon = data.event === 'open' ? '🔗' : data.event === 'close' ? '🔌' : data.event === 'error' ? '⚠️' : '📨';
+    this.logs.unshift({
+      id: Math.random().toString(36).substring(7),
+      type: 'websocket',
+      timestamp: new Date().toISOString(),
+      url: data.url,
+      message: `${icon} WS ${(data.event || '').toUpperCase()}: ${data.message || ''}`,
+      requestData: data.data,
+      status: data.status
+    });
+    this.notify();
+  }
+
+  public logPerformance(data: {
+    fps: number;
+    jsHeapSize?: number;
+    jsHeapLimit?: number;
+    droppedFrames?: number;
+  }) {
+    this.logs.unshift({
+      id: Math.random().toString(36).substring(7),
+      type: 'performance',
+      timestamp: new Date().toISOString(),
+      message: `FPS: ${data.fps}${data.droppedFrames ? ` | Dropped: ${data.droppedFrames}` : ''}${data.jsHeapSize ? ` | Heap: ${(data.jsHeapSize / 1048576).toFixed(1)}MB` : ''}`,
+      durationMs: data.fps,
+      size: `${(data.jsHeapSize || 0) > 0 ? (data.jsHeapSize! / 1048576).toFixed(1) + 'MB' : ''}`,
+      status: data.fps < 30 ? 1 : data.fps < 55 ? 0 : undefined
+    });
+    this.notify();
+  }
+
   public init() {}
 }
 

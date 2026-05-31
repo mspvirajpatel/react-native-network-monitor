@@ -1,3 +1,4 @@
+export declare const isInternalUrl: (originalUrl: string) => boolean;
 /**
  * getRedirectedUrl
  *

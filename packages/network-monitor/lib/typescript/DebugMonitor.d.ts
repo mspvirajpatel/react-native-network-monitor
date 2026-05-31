@@ -16,7 +16,7 @@ interface DebugMonitorProps {
     language?: 'az' | 'en' | 'ru' | 'tr' | 'auto';
     theme?: 'light' | 'dark' | 'auto';
 }
-export type TabType = 'ALL' | 'NETWORK' | 'LOGS' | 'SETTINGS';
+export type TabType = 'ALL' | 'NETWORK' | 'LOGS' | 'WEBSOCKET' | 'PERFORMANCE' | 'SETTINGS';
 export type DetailTab = 'REQUEST' | 'RESPONSE';
 /**
  * DebugMonitor

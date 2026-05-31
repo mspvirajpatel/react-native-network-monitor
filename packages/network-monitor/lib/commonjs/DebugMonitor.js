@@ -9,6 +9,11 @@ var _reactNative = require("react-native");
 var _reactNativeSafeAreaContext = require("react-native-safe-area-context");
 var _DebugMonitorStyles = _interopRequireWildcard(require("./DebugMonitorStyles"));
 var _Logger = require("./Logger");
+var _PerformanceMonitor = require("./PerformanceMonitor");
+var _DeviceInfo = require("./DeviceInfo");
+var _ExportReport = require("./ExportReport");
+var _NetworkMonitor = require("./NetworkMonitor");
+var _FileExporter = require("./FileExporter");
 function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function (e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, default: e }; if (null === e || "object" != typeof e && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]); return f; })(e, t); }
 /* eslint-disable no-unused-vars */
 /* eslint-disable react-native/no-inline-styles */
@@ -91,7 +96,10 @@ const TRANSLATIONS = {
     url: 'URL',
     headers: 'HEADERS',
     status: 'DURUM KODU',
-    body: 'BODY'
+    body: 'BODY',
+    customUrl: 'Özel URL',
+    selectUrl: 'KAYNAK SEÇ',
+    manualUrl: 'MANUEL GİRİŞ'
   },
   ru: {
     title: 'Дебаг Монитор',
@@ -115,7 +123,10 @@ const TRANSLATIONS = {
     url: 'URL',
     headers: 'HEADERS',
     status: 'КОД СТАТУСА',
-    body: 'ТЕЛО'
+    body: 'ТЕЛО',
+    customUrl: 'Пользовательский URL',
+    selectUrl: 'ВЫБОР ИСТОЧНИКА',
+    manualUrl: 'РУЧНОЙ ВВОД'
   }
 };
 /**
@@ -127,6 +138,16 @@ const TRANSLATIONS = {
  * @param props - { label, value, json, color, selectable }
  * @returns JSX.Element | null
  */
+const tryParseJson = data => {
+  if (typeof data === 'string') {
+    try {
+      return JSON.parse(data);
+    } catch (_) {
+      return data;
+    }
+  }
+  return data;
+};
 const Section = ({
   label,
   value,
@@ -136,7 +157,15 @@ const Section = ({
   themeColors
 }) => {
   const styles = (0, _DebugMonitorStyles.default)(themeColors);
-  if (!value && (!json || Object.keys(json).length === 0)) return null;
+  const resolvedJson = json !== undefined && json !== null ? tryParseJson(json) : json;
+  const isEmpty = val => {
+    if (val === null || val === undefined) return true;
+    if (typeof val === 'string') return val.length === 0;
+    if (typeof val === 'object') return Object.keys(val).length === 0;
+    return false;
+  };
+  if (!value && isEmpty(resolvedJson)) return null;
+  const isJsonObject = resolvedJson !== null && typeof resolvedJson === 'object';
   return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.sectionBox
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
@@ -146,12 +175,15 @@ const Section = ({
     style: [styles.sectionValue, color ? {
       color
     } : undefined]
-  }, value) : /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+  }, value) : isJsonObject ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.jsonBox
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
     selectable: true,
     style: styles.jsonText
-  }, JSON.stringify(json, null, 2))));
+  }, JSON.stringify(resolvedJson, null, 2))) : /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    selectable: true,
+    style: styles.sectionValue
+  }, String(resolvedJson)));
 };
 
 /**
@@ -188,11 +220,20 @@ const DebugMonitor = ({
   const [manualUrl, setManualUrl] = (0, _react.useState)('');
   const [, setCustomUrlEntries] = (0, _react.useState)(_Logger.Logger.getCustomUrls());
   const [filterMethod] = (0, _react.useState)('ALL');
+  const [fpsStats, setFpsStats] = (0, _react.useState)(null);
+  const [perfRunning, setPerfRunning] = (0, _react.useState)((0, _PerformanceMonitor.isPerformanceMonitorRunning)());
+  const [deviceInfo] = (0, _react.useState)((0, _DeviceInfo.getDeviceInfo)());
   (0, _react.useEffect)(() => {
     const unsubscribe = _Logger.Logger.subscribe(newLogs => {
       setLogs(newLogs);
     });
     return unsubscribe;
+  }, []);
+  (0, _react.useEffect)(() => {
+    const unsubFps = (0, _PerformanceMonitor.subscribeToFps)(stats => {
+      setFpsStats(stats);
+    });
+    return unsubFps;
   }, []);
   const t = (0, _react.useMemo)(() => {
     let lang = language;
@@ -211,12 +252,14 @@ const DebugMonitor = ({
       ALL: logs.length,
       NETWORK: logs.filter(l => ['request', 'response'].includes(l.type) || l.type === 'error' && !!l.url).length,
       LOGS: logs.filter(l => l.type === 'info' || l.type === 'error' && !l.url).length,
+      WEBSOCKET: logs.filter(l => l.type === 'websocket').length,
+      PERFORMANCE: logs.filter(l => l.type === 'performance').length,
       SETTINGS: 0
     };
   }, [logs]);
   const filteredLogs = (0, _react.useMemo)(() => {
     return logs.filter(log => {
-      const typeMatch = activeTab === 'ALL' ? true : activeTab === 'NETWORK' ? ['request', 'response'].includes(log.type) || log.type === 'error' && !!log.url : activeTab === 'LOGS' ? log.type === 'info' || log.type === 'error' && !log.url : false;
+      const typeMatch = activeTab === 'ALL' ? true : activeTab === 'NETWORK' ? ['request', 'response'].includes(log.type) || log.type === 'error' && !!log.url : activeTab === 'LOGS' ? log.type === 'info' || log.type === 'error' && !log.url : activeTab === 'WEBSOCKET' ? log.type === 'websocket' : activeTab === 'PERFORMANCE' ? log.type === 'performance' : false;
       if (!typeMatch && activeTab !== 'SETTINGS') return false;
       const matchesSearch = searchQuery === '' || log.url?.toLowerCase().includes(searchQuery.toLowerCase()) || log.message?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesMethod = filterMethod === 'ALL' || log.method === filterMethod;
@@ -224,43 +267,63 @@ const DebugMonitor = ({
       return matchesSearch && matchesMethod && matchesStatus;
     });
   }, [logs, activeTab, searchQuery, filterMethod, filterStatus]);
-
-  /**
-   * handleShare
-   *
-   * Share the current logs as a JSON payload using the native share sheet.
-   *
-   * @returns Promise<void>
-   */
-  const handleShare = async () => {
+  const handleExportJson = async () => {
     try {
+      const report = (0, _ExportReport.generateExportReport)(logs);
       await _reactNative.Share.share({
-        message: JSON.stringify(logs, null, 2),
-        title: 'Debug Logs'
+        message: JSON.stringify(report, null, 2),
+        title: 'Network Monitor Export Report'
       });
     } catch (e) {
-      _reactNative.Alert.alert('Error', 'Could not share logs');
+      _reactNative.Alert.alert('Error', 'Could not share report');
     }
   };
-
-  /**
-   * generateCurl
-   *
-   * Create a cURL command string from a `LogEntry` for easy repro/testing.
-   *
-   * @param log - Log entry to convert
-   * @returns cURL command string
-   */
+  const handleExportText = async () => {
+    try {
+      const report = (0, _ExportReport.generateExportReport)(logs);
+      const text = (0, _ExportReport.formatReportAsText)(report);
+      await _reactNative.Share.share({
+        message: text,
+        title: 'Network Monitor Export Report'
+      });
+    } catch (e) {
+      _reactNative.Alert.alert('Error', 'Could not share report');
+    }
+  };
+  const handleShareLog = async log => {
+    try {
+      const lines = [`Type: ${log.type}`, `Time: ${log.timestamp}`, log.method ? `Method: ${log.method}` : null, log.url ? `URL: ${log.url}` : null, log.status ? `Status: ${log.status}` : null, log.message ? `Message: ${log.message}` : null, log.durationMs !== undefined ? `Duration: ${log.durationMs}ms` : null, log.size ? `Size: ${log.size}` : null].filter(Boolean).join('\n');
+      await _reactNative.Share.share({
+        message: lines,
+        title: 'Log Entry'
+      });
+    } catch (e) {
+      _reactNative.Alert.alert('Error', 'Could not share log');
+    }
+  };
+  const escapeShell = str => {
+    return str.replace(/'/g, "'\\''");
+  };
+  const formatCurlBody = data => {
+    if (data === null || data === undefined) return '';
+    if (typeof data === 'string') return data;
+    return JSON.stringify(data);
+  };
   const generateCurl = log => {
     if (!log.url) return '';
-    let curl = `curl -X ${log.method || 'GET'} "${log.url}"`;
-    if (log.headers) {
-      Object.keys(log.headers).forEach(key => {
-        curl += ` -H "${key}: ${log.headers[key]}"`;
+    if (!log.url || (0, _NetworkMonitor.isInternalUrl)(log.url)) return '';
+    let curl = `curl -X ${log.method || 'GET'} '${escapeShell(log.url)}'`;
+    if (log.requestHeaders) {
+      Object.keys(log.requestHeaders).forEach(key => {
+        const val = String(log.requestHeaders[key]);
+        curl += ` -H '${escapeShell(key)}: ${escapeShell(val)}'`;
       });
     }
     if (log.requestData) {
-      curl += ` -d '${JSON.stringify(log.requestData)}'`;
+      const body = formatCurlBody(log.requestData);
+      if (body) {
+        curl += ` -d '${escapeShell(body)}'`;
+      }
     }
     return curl;
   };
@@ -350,21 +413,21 @@ const DebugMonitor = ({
     }), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: styles.logBody
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.logHeader
+      style: styles.logRow
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: [styles.badge, {
+      style: [styles.logChip, {
         backgroundColor: indicatorColor + '18'
       }]
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: [styles.logMethod, {
+      style: [styles.logChipText, {
         color: indicatorColor
       }]
-    }, item.method || (isConsoleError ? 'ERROR' : item.type.toUpperCase()))), item.status ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: [styles.statusChip, {
+    }, item.method || (isConsoleError ? 'ERROR' : (item.type || '').toUpperCase()))), item.status ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.logStatusChip, {
         backgroundColor: indicatorColor + '18'
       }]
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: [styles.statusChipText, {
+      style: [styles.logStatusText, {
         color: indicatorColor
       }]
     }, item.status)) : null, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
@@ -450,13 +513,15 @@ const DebugMonitor = ({
     return /*#__PURE__*/_react.default.createElement(_reactNative.ScrollView, {
       style: styles.settingsContainer
     }, allSources.length > 0 ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.section
+      style: styles.settingsSection
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.sectionHeaderBox
-    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: styles.sectionTitle
+      style: styles.settingsSectionHeader
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.settingsSectionLine
+    }), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.settingsSectionTitle
     }, t.selectUrl)), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.card
+      style: styles.settingsCard
     }, allSources.map((item, index) => {
       const isUrlActive = baseUrl !== '' && baseUrl === item.val;
       const isEnvActive = baseUrl === '' && item.type === 'env' && envConfig?.currentEnv === item.val;
@@ -494,20 +559,22 @@ const DebugMonitor = ({
         style: styles.activeDot
       }) : null));
     }))) : null, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: [styles.section, {
+      style: [styles.settingsSection, {
         marginTop: allSources.length > 0 ? 32 : 0
       }]
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.sectionHeaderBox
-    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: styles.sectionTitle
+      style: styles.settingsSectionHeader
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.settingsSectionLine
+    }), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.settingsSectionTitle
     }, t.manualUrl)), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.card
+      style: styles.settingsCard
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: styles.cardInner
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.inputLabel
-    }, t.customUrl.toUpperCase()), /*#__PURE__*/_react.default.createElement(_reactNative.TextInput, {
+    }, t.customUrl?.toUpperCase() || ''), /*#__PURE__*/_react.default.createElement(_reactNative.TextInput, {
       style: styles.textInput,
       value: manualUrl,
       placeholder: "https://api.example.com",
@@ -521,26 +588,72 @@ const DebugMonitor = ({
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.saveBtnText
     }, "APPLY CHANGES"))))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: [styles.section, {
+      style: [styles.settingsSection, {
         marginTop: 32
       }]
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.sectionHeaderBox
-    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: styles.sectionTitle
+      style: styles.settingsSectionHeader
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.settingsSectionLine
+    }), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.settingsSectionTitle
+    }, "DEVICE INFO")), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.settingsCard
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.cardInner
+    }, renderDeviceInfoSection()))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.settingsSection, {
+        marginTop: 32
+      }]
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.settingsSectionHeader
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.settingsSectionLine
+    }), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.settingsSectionTitle
     }, "ADVANCED TOOLS")), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.card
+      style: styles.settingsCard
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: styles.cardInner
     }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
       style: [styles.toolBtn, {
         margin: 0,
-        marginBottom: 16
+        marginBottom: 12
       }],
-      onPress: handleShare
+      onPress: handleExportJson
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.toolBtnText
-    }, "EXPORT JSON REPORT")), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    }, "SHARE JSON REPORT")), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      style: [styles.toolBtn, {
+        margin: 0,
+        marginBottom: 16
+      }],
+      onPress: handleExportText
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.toolBtnText
+    }, "SHARE TEXT REPORT")), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      style: [styles.toolBtn, {
+        margin: 0,
+        marginBottom: 12,
+        borderColor: C.accent + '40'
+      }],
+      onPress: () => (0, _FileExporter.saveReportToJson)(logs)
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.toolBtnText, {
+        color: C.accent
+      }]
+    }, "SAVE JSON REPORT TO FILE")), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      style: [styles.toolBtn, {
+        margin: 0,
+        marginBottom: 16,
+        borderColor: C.accent + '40'
+      }],
+      onPress: () => (0, _FileExporter.saveReportToText)(logs)
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.toolBtnText, {
+        color: C.accent
+      }]
+    }, "SAVE TEXT REPORT TO FILE")), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
       style: [styles.toolBtn, {
         margin: 0,
         borderColor: C.error + '40'
@@ -555,6 +668,228 @@ const DebugMonitor = ({
         height: 60
       }
     }));
+  };
+  const renderPerformance = () => {
+    const fps = fpsStats;
+    const fpsPercent = fps ? Math.min(fps.fps / 60 * 100, 100) : 0;
+    const barColor = !fps ? C.textDim : fps.fps >= 55 ? C.success : fps.fps >= 30 ? C.warning : C.error;
+    const fpsLabel = !fps ? '--' : `${fps.fps}`;
+    return /*#__PURE__*/_react.default.createElement(_reactNative.ScrollView, {
+      style: styles.perfContainer
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.perfToggle
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.perfToggleText
+    }, perfRunning ? 'FPS Monitor Active' : 'FPS Monitor Off'), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      style: [styles.toggleTrack, perfRunning ? styles.toggleTrackActive : styles.toggleTrackInactive],
+      onPress: () => {
+        if (perfRunning) {
+          (0, _PerformanceMonitor.stopPerformanceMonitor)();
+          setPerfRunning(false);
+        } else {
+          (0, _PerformanceMonitor.startPerformanceMonitor)();
+          setPerfRunning(true);
+        }
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.toggleThumb, {
+        alignSelf: perfRunning ? 'flex-end' : 'flex-start'
+      }]
+    }))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.perfCard
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.perfRow
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.perfLabel
+    }, "CURRENT FPS"), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.perfValue, !fps ? {} : fps.fps >= 55 ? styles.perfValueGood : fps.fps >= 30 ? styles.perfValueWarning : styles.perfValueError]
+    }, fpsLabel)), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.fpsBar
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.fpsBarFill, {
+        width: `${fpsPercent}%`,
+        backgroundColor: barColor
+      }]
+    }))), fps && /*#__PURE__*/_react.default.createElement(_react.default.Fragment, null, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.perfCard
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.perfRow
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.perfLabel
+    }, "AVERAGE FPS"), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.perfValue
+    }, fps.averageFps)), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.perfRow
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.perfLabel
+    }, "MIN FPS"), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.perfValue, fps.minFps < 30 ? styles.perfValueError : styles.perfValueGood]
+    }, fps.minFps)), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.perfRow
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.perfLabel
+    }, "MAX FPS"), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.perfValue
+    }, fps.maxFps)), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.perfRow
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.perfLabel
+    }, "DROPPED FRAMES"), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.perfValue, fps.droppedFrames > 10 ? styles.perfValueWarning : styles.perfValueGood]
+    }, fps.droppedFrames))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.perfCard
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.perfLabel
+    }, "FPS HISTORY (LAST 60 SECONDS)"), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        height: 80,
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        gap: 1,
+        marginTop: 12
+      }
+    }, Array.from({
+      length: Math.min(60, fps.fps)
+    }, (_, i) => {
+      const h = Math.max(4, fps.averageFps / 60 * 80);
+      return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+        key: i,
+        style: {
+          flex: 1,
+          height: h,
+          backgroundColor: barColor,
+          borderRadius: 1,
+          opacity: 0.5 + i / 60 * 0.5
+        }
+      });
+    })))), !fps && /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.perfCard
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.perfLabel, {
+        textAlign: 'center',
+        marginVertical: 20
+      }]
+    }, "Tap the toggle above to start monitoring FPS")), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        height: 60
+      }
+    }));
+  };
+  const renderWebSocket = () => {
+    const wsLogs = logs.filter(l => l.type === 'websocket');
+    if (wsLogs.length === 0) {
+      return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+        style: styles.wsContainer
+      }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+        style: [styles.perfCard, {
+          alignItems: 'center',
+          padding: 40
+        }]
+      }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+        style: {
+          fontSize: 32,
+          marginBottom: 12
+        }
+      }, "\uD83D\uDD0C"), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+        style: [styles.perfLabel, {
+          textAlign: 'center',
+          marginBottom: 4
+        }]
+      }, "NO WEBSOCKET ACTIVITY"), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+        style: [styles.perfLabel, {
+          color: C.textSubtle,
+          fontSize: 10,
+          textAlign: 'center'
+        }]
+      }, "WebSocket connections are automatically intercepted")));
+    }
+    return /*#__PURE__*/_react.default.createElement(_reactNative.ScrollView, {
+      style: styles.wsContainer
+    }, wsLogs.map(log => {
+      const isOpen = log.message?.includes('OPEN');
+      const isClose = log.message?.includes('CLOSE');
+      const isError = log.message?.includes('ERROR');
+      const badgeColor = isOpen ? C.success : isClose ? C.textDim : isError ? C.error : C.primary;
+      return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+        key: log.id,
+        style: styles.wsItem
+      }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+        style: styles.wsHeader
+      }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+        style: [styles.wsBadge, {
+          backgroundColor: badgeColor + '20'
+        }]
+      }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+        style: [styles.wsBadgeText, {
+          color: badgeColor
+        }]
+      }, isOpen ? 'OPEN' : isClose ? 'CLOSE' : isError ? 'ERROR' : 'MSG')), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+        style: styles.wsUrl,
+        numberOfLines: 1
+      }, log.url), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+        style: styles.wsTime
+      }, new Date(log.timestamp).toLocaleTimeString([], {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }))), log.message && /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+        style: styles.wsMessage,
+        numberOfLines: 3
+      }, log.message), log.requestData && /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+        style: [styles.jsonBox, {
+          marginTop: 8,
+          padding: 10
+        }]
+      }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+        style: styles.jsonText,
+        numberOfLines: 5
+      }, typeof log.requestData === 'string' ? log.requestData : JSON.stringify(log.requestData, null, 2))));
+    }), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        height: 40
+      }
+    }));
+  };
+  const renderDeviceInfoSection = () => {
+    const info = deviceInfo;
+    return /*#__PURE__*/_react.default.createElement(_reactNative.View, null, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.deviceSectionTitle
+    }, "DEVICE"), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.deviceRow
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.deviceLabel
+    }, "Platform"), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.deviceValue
+    }, info.platform, " ", info.osVersion)), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.deviceRow
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.deviceLabel
+    }, "Model"), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.deviceValue
+    }, info.deviceName)), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.deviceRow
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.deviceLabel
+    }, "Screen"), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.deviceValue
+    }, info.screenWidth, "x", info.screenHeight, " @", info.screenScale, "x")), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.deviceSectionTitle, {
+        marginTop: 24
+      }]
+    }, "APPLICATION"), info.appVersion && /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.deviceRow
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.deviceLabel
+    }, "App Version"), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.deviceValue
+    }, info.appVersion)), info.buildVersion && /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.deviceRow
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.deviceLabel
+    }, "Build Version"), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.deviceValue
+    }, info.buildVersion)));
   };
   const {
     top,
@@ -574,52 +909,64 @@ const DebugMonitor = ({
   }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.header
   }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-    style: styles.headerInfo
+    style: styles.headerTop
   }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-    style: styles.titleRow
+    style: styles.headerLeft
   }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-    style: styles.titleDot
-  }), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: styles.headerLogo
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: styles.headerLogoText
+  }, "N")), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
     style: styles.headerTitle
-  }, t.title.toUpperCase())), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-    style: styles.headerSubtitle
-  }, logs.length, " ", t.entries)), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+  }, "Monitor"), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: styles.headerCount
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: C.textDim,
+      fontSize: 10,
+      fontWeight: '700'
+    }
+  }, logs.length))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.headerActions
   }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
-    style: [styles.closeBtn, {
-      backgroundColor: C.error + '18'
+    style: [styles.headerBtn, {
+      backgroundColor: C.errorDim
     }],
     onPress: () => _Logger.Logger.clearLogs()
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-    style: [styles.closeBtnText, {
-      color: C.error
+    style: [styles.headerBtnText, {
+      color: C.error,
+      fontSize: 11,
+      fontWeight: '800'
     }]
-  }, t.clear.toUpperCase())), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
-    style: styles.closeBtn,
+  }, "\u2715")), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    style: styles.headerBtn,
     onPress: onClose
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-    style: styles.closeBtnText
-  }, t.close.toUpperCase())))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-    style: styles.tabContainer
+    style: [styles.headerBtnText, {
+      fontSize: 13
+    }]
+  }, "\u2304"))))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: styles.tabBar
   }, /*#__PURE__*/_react.default.createElement(_reactNative.ScrollView, {
     horizontal: true,
     showsHorizontalScrollIndicator: false,
     contentContainerStyle: styles.tabScroll
-  }, ['ALL', 'NETWORK', 'LOGS', 'SETTINGS'].map(tab => /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+  }, ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'SETTINGS'].map(tab => /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
     key: tab,
-    style: [styles.tab, activeTab === tab && styles.tabActive],
+    style: styles.tabItem,
     onPress: () => setActiveTab(tab)
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-    style: [styles.tabText, activeTab === tab && styles.tabTextActive]
-  }, tab === 'ALL' ? t.all : tab === 'NETWORK' ? t.network : tab === 'LOGS' ? t.logs : t.settings, tab !== 'SETTINGS' ? ` (${tabCounts[tab]})` : ''), activeTab === tab ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-    style: styles.activeTabDot
+    style: [styles.tabText, activeTab === tab ? styles.tabTextActive : styles.tabTextInactive]
+  }, tab === 'ALL' ? t.all : tab === 'NETWORK' ? t.network : tab === 'LOGS' ? t.logs : tab === 'WEBSOCKET' ? 'WS' : tab === 'PERFORMANCE' ? 'FPS' : t.settings, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: styles.tabBadge
+  }, tab !== 'SETTINGS' ? ` ${tabCounts[tab]}` : '')), activeTab === tab ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: styles.tabActiveLine
   }) : null)))), activeTab !== 'SETTINGS' ? /*#__PURE__*/_react.default.createElement(_reactNative.View, null, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.searchRow
   }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.searchBox
-  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-    style: styles.searchIcon
-  }, "\uD83D\uDD0D"), /*#__PURE__*/_react.default.createElement(_reactNative.TextInput, {
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.TextInput, {
     style: styles.searchInput,
     placeholder: t.search,
     placeholderTextColor: C.textDim,
@@ -636,8 +983,8 @@ const DebugMonitor = ({
     style: [styles.filterPill, filterStatus === s && styles.filterPillActive],
     onPress: () => setFilterStatus(s)
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-    style: [styles.filterPillText, filterStatus === s && styles.filterPillTextActive]
-  }, s === 'ALL' ? '🟡 All' : s === 'OK' ? '🟢 2xx / 3xx' : '🔴 4xx / 5xx')))) : null) : null, activeTab === 'SETTINGS' ? renderSettings() : /*#__PURE__*/_react.default.createElement(_reactNative.FlatList, {
+    style: [styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]
+  }, s === 'ALL' ? 'All' : s === 'OK' ? '2xx/3xx' : '4xx/5xx')))) : null) : null, activeTab === 'SETTINGS' ? renderSettings() : activeTab === 'PERFORMANCE' ? renderPerformance() : activeTab === 'WEBSOCKET' ? renderWebSocket() : /*#__PURE__*/_react.default.createElement(_reactNative.FlatList, {
     data: filteredLogs,
     renderItem: renderLogItem,
     keyExtractor: item => item.id,
@@ -657,90 +1004,106 @@ const DebugMonitor = ({
     transparent: true,
     visible: !!selectedLog,
     animationType: "slide",
-    presentationStyle: "overFullScreen",
-    supportedOrientations: ['landscape', 'landscape-left', 'landscape-right']
+    supportedOrientations: ['landscape', 'landscape-left', 'landscape-right'],
+    onRequestClose: () => {
+      setSelectedLog(null);
+      setShowMenu(false);
+    }
   }, (() => {
     const isSelectedConsoleError = selectedLog?.type === 'info' && selectedLog?.message?.startsWith('[ERROR]');
     return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: [styles.detailsModal, {
+      style: [styles.detailOverlay, {
         paddingTop: top,
         paddingBottom: bottom
       }]
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.detailsHeader
+      style: styles.detailSheet
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.detailsTopRow
+      style: styles.detailHandle
+    }), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.detailHeader
     }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
-      style: styles.backBtn,
+      style: styles.detailBack,
       onPress: () => {
         setSelectedLog(null);
         setShowMenu(false);
       }
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: styles.backBtnText
+      style: styles.detailBackText
     }, "\u2190")), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: [styles.detailsPerfText, isSelectedConsoleError && {
+      style: [styles.detailTitle, isSelectedConsoleError && {
         color: C.error
       }]
-    }, selectedLog?.type === 'info' ? isSelectedConsoleError ? 'CONSOLE ERROR' : t.logs.toUpperCase() : `${selectedLog?.durationMs ?? 0}ms, ${selectedLog?.size || '0.00kb'}`), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
-      style: styles.menuBtn,
+    }, selectedLog?.type === 'info' ? isSelectedConsoleError ? 'CONSOLE ERROR' : (t.logs || '').toUpperCase() : `${selectedLog?.durationMs ?? 0}ms, ${selectedLog?.size || '0.00kb'}`), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      style: styles.detailMenu,
       onPress: () => setShowMenu(!showMenu)
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: styles.menuBtnText
+      style: styles.detailMenuText
     }, "\u22EE"))), showMenu ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.dropdownMenu
+      style: styles.detailDropdown
     }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
-      style: styles.menuItem,
+      style: styles.detailDropdownItem,
       onPress: () => {
-        _reactNative.Share.share({
-          message: JSON.stringify(selectedLog, null, 2)
-        });
+        handleShareLog(selectedLog);
         setShowMenu(false);
       }
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: styles.menuItemText
-    }, "Share")), selectedLog?.type !== 'info' ? /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
-      style: styles.menuItem,
+      style: styles.detailDropdownText
+    }, "Share Entry")), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      style: styles.detailDropdownItem,
       onPress: () => {
-        _reactNative.Share.share({
-          message: generateCurl(selectedLog)
-        });
+        if (selectedLog) {
+          const curl = generateCurl(selectedLog);
+          _reactNative.Share.share({
+            message: curl || JSON.stringify(selectedLog, null, 2),
+            title: 'cURL Command'
+          });
+        }
         setShowMenu(false);
       }
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: styles.menuItemText
-    }, "Copy cURL")) : null, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
-      style: [styles.menuItem, {
+      style: styles.detailDropdownText
+    }, "Share cURL")), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      style: [styles.detailDropdownItem, {
         borderBottomWidth: 0
       }],
       onPress: () => setShowMenu(false)
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: styles.menuItemText
-    }, "Close"))) : null, selectedLog?.type !== 'info' ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.detailsTabs
+      style: styles.detailDropdownText
+    }, "Close"))) : null, selectedLog?.type !== 'info' && selectedLog?.type !== 'websocket' && selectedLog?.type !== 'performance' ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.detailTabs
     }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
       style: [styles.detailTab, detailTab === 'REQUEST' && styles.detailTabActive],
       onPress: () => setDetailTab('REQUEST')
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: [styles.detailTabText, detailTab === 'REQUEST' && styles.detailTabTextActive]
-    }, t.request.toUpperCase())), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      style: [styles.detailTabText, detailTab === 'REQUEST' ? styles.detailTabTextActive : styles.detailTabTextInactive]
+    }, (t.request || '').toUpperCase())), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
       style: [styles.detailTab, detailTab === 'RESPONSE' && styles.detailTabActive],
       onPress: () => setDetailTab('RESPONSE')
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-      style: [styles.detailTabText, detailTab === 'RESPONSE' && styles.detailTabTextActive]
-    }, t.response.toUpperCase()))) : null), /*#__PURE__*/_react.default.createElement(_reactNative.ScrollView, {
-      style: styles.detailsContent,
+      style: [styles.detailTabText, detailTab === 'RESPONSE' ? styles.detailTabTextActive : styles.detailTabTextInactive]
+    }, (t.response || '').toUpperCase()))) : null, /*#__PURE__*/_react.default.createElement(_reactNative.ScrollView, {
+      style: styles.detailContent,
       showsVerticalScrollIndicator: false
-    }, selectedLog?.type === 'info' ? /*#__PURE__*/_react.default.createElement(_react.default.Fragment, null, /*#__PURE__*/_react.default.createElement(Section, {
+    }, selectedLog?.type === 'info' || selectedLog?.type === 'websocket' || selectedLog?.type === 'performance' ? /*#__PURE__*/_react.default.createElement(_react.default.Fragment, null, /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       selectable: true,
-      label: "LOG MESSAGE",
+      label: selectedLog?.type === 'websocket' ? 'WEBSOCKET EVENT' : selectedLog?.type === 'performance' ? 'PERFORMANCE DATA' : 'LOG MESSAGE',
       value: selectedLog?.message
-    }), /*#__PURE__*/_react.default.createElement(Section, {
+    }), selectedLog?.url ? /*#__PURE__*/_react.default.createElement(Section, {
+      themeColors: C,
+      selectable: true,
+      label: "URL",
+      value: selectedLog.url
+    }) : null, /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: "DATA",
       json: selectedLog?.requestData
-    })) : detailTab === 'REQUEST' ? /*#__PURE__*/_react.default.createElement(_react.default.Fragment, null, /*#__PURE__*/_react.default.createElement(Section, {
+    }), selectedLog?.type === 'performance' && selectedLog?.durationMs ? /*#__PURE__*/_react.default.createElement(Section, {
+      themeColors: C,
+      label: "FPS",
+      value: String(selectedLog.durationMs)
+    }) : null) : detailTab === 'REQUEST' ? /*#__PURE__*/_react.default.createElement(_react.default.Fragment, null, /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: t.method,
       value: selectedLog?.method
@@ -774,7 +1137,7 @@ const DebugMonitor = ({
       style: {
         height: 100
       }
-    })));
+    }))));
   })())));
 };
 exports.DebugMonitor = DebugMonitor;

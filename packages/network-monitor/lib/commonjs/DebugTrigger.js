@@ -7,10 +7,17 @@ exports.DebugTrigger = void 0;
 var _react = _interopRequireWildcard(require("react"));
 var _reactNative = require("react-native");
 var _storage = require("./storage");
+var _reactNativeSafeAreaContext = require("react-native-safe-area-context");
 var _ConsoleMonitor = require("./ConsoleMonitor");
 var _DebugMonitor = require("./DebugMonitor");
 var _Logger = require("./Logger");
+var _DebugContext = _interopRequireDefault(require("./DebugContext"));
 var _NetworkMonitor = require("./NetworkMonitor");
+var _WebSocketMonitor = require("./WebSocketMonitor");
+var _PerformanceMonitor = require("./PerformanceMonitor");
+var _ErrorBoundary = require("./ErrorBoundary");
+var _PersistenceManager = require("./PersistenceManager");
+function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }
 function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function (e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, default: e }; if (null === e || "object" != typeof e && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]); return f; })(e, t); }
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); } /* eslint-disable react-native/no-inline-styles */ /* eslint-disable react-hooks/exhaustive-deps */ /* eslint-disable @typescript-eslint/no-unused-vars */
 const TRANSLATIONS = {
@@ -193,6 +200,7 @@ const DebugTrigger = ({
   children,
   password = "2024",
   passwordFrequency = "all-time",
+  passwordOptional = false,
   enableShake = false,
   clicksNeeded = 5,
   isDemo = false,
@@ -202,11 +210,20 @@ const DebugTrigger = ({
   prodUrl,
   testUrl,
   enabled = true,
+  enableTapGesture = true,
+  floatingButtonMargin = 16,
   checkAccess,
   language = "auto",
   theme = "auto"
 }) => {
   const systemScheme = (0, _reactNative.useColorScheme)();
+  const insets = (0, _reactNativeSafeAreaContext.useSafeAreaInsets)();
+  const safeM = {
+    x: floatingButtonMargin + insets.right,
+    y: floatingButtonMargin + insets.bottom,
+    left: floatingButtonMargin + insets.left,
+    top: floatingButtonMargin + insets.top
+  };
   const effectiveTheme = theme === "auto" ? systemScheme === "light" ? "light" : "dark" : theme;
   const isLight = effectiveTheme === "light";
   const [clicks, setClicks] = (0, _react.useState)(0);
@@ -220,8 +237,19 @@ const DebugTrigger = ({
   (0, _react.useEffect)(() => {
     (0, _NetworkMonitor.setupNetworkMonitor)();
     (0, _ConsoleMonitor.setupConsoleMonitor)();
-
-    // Set initial base URL if not already set
+    (0, _WebSocketMonitor.setupWebSocketMonitor)();
+    (0, _ErrorBoundary.setupGlobalErrorHandlers)();
+    (0, _PerformanceMonitor.startPerformanceMonitor)();
+    (0, _PersistenceManager.startPersistence)(15000);
+    (0, _PersistenceManager.restoreLogs)().then(savedLogs => {
+      if (savedLogs.length > 0) {
+        savedLogs.forEach(log => {
+          if (log.message && !log.url) {
+            _Logger.Logger.logInfo(log.message, log.requestData);
+          }
+        });
+      }
+    });
     if (!_Logger.Logger.getBaseUrl()) {
       const initialUrl = isDemo ? testUrl : prodUrl;
       if (initialUrl) {
@@ -246,6 +274,11 @@ const DebugTrigger = ({
       const hasAccess = await checkAccess();
       if (!hasAccess) return;
     }
+    if (passwordOptional) {
+      setShowMonitor(true);
+      setShowFloatingButton(true);
+      return;
+    }
     if (!password) {
       setShowMonitor(true);
       setShowFloatingButton(true);
@@ -264,6 +297,10 @@ const DebugTrigger = ({
         return;
       }
     }
+    savedPos.current = {
+      x: posRef.current.x,
+      y: posRef.current.y
+    };
     setShowPasswordModal(true);
   };
 
@@ -273,6 +310,7 @@ const DebugTrigger = ({
    * Resets the click count after 2 seconds of inactivity.
    */
   const handleClick = () => {
+    if (!enableTapGesture) return;
     if (showFloatingButton || showPasswordModal || showMonitor) {
       return;
     }
@@ -308,243 +346,198 @@ const DebugTrigger = ({
       setInputPassword("");
     }
   };
-
-  // Floating button: draggable + always-on-top via transparent Modal
-  const FLOATING_BUTTON_POSITION_KEY = "networkMonitorFloatingButtonPosition";
-  const pan = (0, _react.useRef)(new _reactNative.Animated.ValueXY({
+  const BTN_STORAGE_KEY = "networkMonitorBtnPos";
+  const {
+    width: initW,
+    height: initH
+  } = _reactNative.Dimensions.get("window");
+  const initX = Math.min(initW - 80 - insets.right, Math.max(safeM.left, initW - 80 - insets.right));
+  const initY = Math.min(initH * 0.5, Math.max(60 + insets.top, initH * 0.5));
+  const btnX = (0, _react.useRef)(new _reactNative.Animated.Value(initX)).current;
+  const btnY = (0, _react.useRef)(new _reactNative.Animated.Value(initY)).current;
+  const [btnSize, setBtnSize] = (0, _react.useState)({
+    w: 60,
+    h: 40
+  });
+  const [btnHidden, setBtnHidden] = (0, _react.useState)(false);
+  const inactivityTimer = (0, _react.useRef)(null);
+  const posRef = (0, _react.useRef)({
+    x: initX,
+    y: initY
+  });
+  const gestureRef = (0, _react.useRef)({
     x: 0,
     y: 0
-  })).current;
-  const [isPanReady, setIsPanReady] = (0, _react.useState)(false);
-  const [btnSize, setBtnSize] = (0, _react.useState)({
-    width: 0,
-    height: 0
   });
-
-  // Inactivity / disabled state for floating button
-  const [floatingDisabled, setFloatingDisabled] = (0, _react.useState)(false);
-  const inactivityTimerRef = (0, _react.useRef)(null);
-  const INACTIVITY_MS = 3000; // 3 seconds
-
-  const resetInactivityTimer = () => {
-    try {
-      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-    } catch (_e) {
-      // ignore
-    }
-    setFloatingDisabled(false);
-    inactivityTimerRef.current = setTimeout(() => setFloatingDisabled(true), INACTIVITY_MS);
+  const savedPos = (0, _react.useRef)({
+    x: initX,
+    y: initY
+  });
+  const clampPosition = (x, y, bw, bh) => {
+    const {
+      width: sw,
+      height: sh
+    } = _reactNative.Dimensions.get("window");
+    return {
+      x: Math.max(safeM.left, Math.min(sw - bw - safeM.x, x)),
+      y: Math.max(safeM.top, Math.min(sh - bh - safeM.y, y))
+    };
   };
   (0, _react.useEffect)(() => {
     if (showFloatingButton) {
-      resetInactivityTimer();
+      setBtnHidden(false);
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      inactivityTimer.current = setTimeout(() => setBtnHidden(true), 8000);
     } else {
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-        inactivityTimerRef.current = null;
-      }
-      setFloatingDisabled(false);
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      setBtnHidden(false);
     }
     return () => {
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-        inactivityTimerRef.current = null;
-      }
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showFloatingButton]);
-  const HORIZONTAL_MARGIN = 20; // horizontal margin from both edges
-  const TOP_MARGIN = 40; // top margin
-  const BOTTOM_MARGIN = 30; // bottom margin
-
-  /**
-   * clampValue
-   * Clamp a number between a minimum and maximum.
-   */
-  const clampValue = (v, a, b) => Math.max(a, Math.min(b, v));
   (0, _react.useEffect)(() => {
     (async () => {
-      const saved = await (0, _storage.getStorageValue)(FLOATING_BUTTON_POSITION_KEY, undefined);
+      const saved = await (0, _storage.getStorageValue)(BTN_STORAGE_KEY, null);
+      if (!saved) return;
       const {
-        height
+        width: sw,
+        height: sh
       } = _reactNative.Dimensions.get("window");
-      const defaultX = 50;
-      const defaultY = height - 50;
-      if (saved && typeof saved === "object" && "x" in saved && "y" in saved && typeof saved.x === "number" && typeof saved.y === "number") {
-        pan.setValue({
-          x: saved.x,
-          y: saved.y
-        });
-      } else {
-        pan.setValue({
-          x: defaultX,
-          y: defaultY
-        });
-      }
-      setIsPanReady(true);
+      const dx = saved.x ?? sw - 80;
+      const dy = saved.y ?? sh * 0.5;
+      const clamped = clampPosition(dx, dy, btnSize.w, btnSize.h);
+      posRef.current = {
+        x: clamped.x,
+        y: clamped.y
+      };
+      btnX.setValue(clamped.x);
+      btnY.setValue(clamped.y);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const snapToEdge = (x, y, anim) => {
+    const {
+      width: sw
+    } = _reactNative.Dimensions.get("window");
+    const bw = btnSize.w;
+    const bh = btnSize.h;
+    const clamped = clampPosition(x, y, bw, bh);
+    const leftDist = clamped.x - safeM.left;
+    const rightDist = sw - clamped.x - bw - safeM.x;
+    const snapX = leftDist < rightDist ? safeM.left : sw - bw - safeM.x;
+    posRef.current = {
+      x: snapX,
+      y: clamped.y
+    };
+    if (anim) {
+      _reactNative.Animated.spring(btnX, {
+        toValue: snapX,
+        useNativeDriver: false,
+        friction: 7,
+        tension: 40
+      }).start();
+      _reactNative.Animated.spring(btnY, {
+        toValue: clamped.y,
+        useNativeDriver: false,
+        friction: 7,
+        tension: 40
+      }).start();
+    } else {
+      btnX.setValue(snapX);
+      btnY.setValue(clamped.y);
+    }
+    (0, _storage.setStorageValue)(BTN_STORAGE_KEY, {
+      x: snapX,
+      y: clamped.y
+    });
+  };
+  const snapToEdgeOnResize = () => {
+    const {
+      width: sw,
+      height: sh
+    } = _reactNative.Dimensions.get("window");
+    const bw = btnSize.w;
+    const bh = btnSize.h;
+    const clamped = clampPosition(posRef.current.x, posRef.current.y, bw, bh);
+    const leftDist = clamped.x - safeM.left;
+    const rightDist = sw - clamped.x - bw - safeM.x;
+    const snapX = leftDist < rightDist ? safeM.left : sw - bw - safeM.x;
+    const finalPos = {
+      x: snapX,
+      y: clamped.y
+    };
+    posRef.current = finalPos;
+    btnX.setValue(snapX);
+    btnY.setValue(clamped.y);
+    (0, _storage.setStorageValue)(BTN_STORAGE_KEY, finalPos);
+  };
   const panResponder = (0, _react.useRef)(_reactNative.PanResponder.create({
     onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 2 || Math.abs(g.dy) > 2,
     onPanResponderGrant: () => {
-      // capture current offset
-      try {
-        pan.setOffset({
-          x: pan.x._value ?? 0,
-          y: pan.y._value ?? 0
-        });
-      } catch (_e) {
-        // ignore
-      }
-      pan.setValue({
-        x: 0,
-        y: 0
-      });
+      gestureRef.current = {
+        x: posRef.current.x,
+        y: posRef.current.y
+      };
+      setBtnHidden(false);
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     },
-    onPanResponderMove: _reactNative.Animated.event([null, {
-      dx: pan.x,
-      dy: pan.y
-    }], {
-      useNativeDriver: false
-    }),
-    onPanResponderRelease: (_evt, gestureState) => {
-      const {
-        dx,
-        dy
-      } = gestureState;
-      pan.flattenOffset();
-
-      // get raw final values
-      let finalX = pan.x.__getValue ? pan.x.__getValue() : pan.x._value;
-      let finalY = pan.y.__getValue ? pan.y.__getValue() : pan.y._value;
-
-      // compute bounds based on measured button size (fallback sizes if not yet measured)
-      const {
-        width: screenW,
-        height: screenH
-      } = _reactNative.Dimensions.get("window");
-      const bw = btnSize.width || 60;
-      const bh = btnSize.height || 40;
-      const minX = HORIZONTAL_MARGIN;
-      const maxX = Math.max(minX, screenW - HORIZONTAL_MARGIN - bw);
-      const minY = TOP_MARGIN;
-      const maxY = Math.max(minY, screenH - BOTTOM_MARGIN - bh);
-      const clampedX = clampValue(finalX, minX, maxX);
-      const clampedY = clampValue(finalY, minY, maxY);
-      if (clampedX !== finalX || clampedY !== finalY) {
-        // animate back into bounds
-        _reactNative.Animated.timing(pan, {
-          toValue: {
-            x: clampedX,
-            y: clampedY
-          },
-          duration: 180,
-          useNativeDriver: false
-        }).start(() => {
-          (0, _storage.setStorageValue)(FLOATING_BUTTON_POSITION_KEY, {
-            x: clampedX,
-            y: clampedY
-          });
-        });
-      } else {
-        (0, _storage.setStorageValue)(FLOATING_BUTTON_POSITION_KEY, {
-          x: finalX,
-          y: finalY
-        });
-      }
-
-      // treat very small movement as a tap
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) {
+    onPanResponderMove: (_, g) => {
+      const nx = gestureRef.current.x + g.dx;
+      const ny = gestureRef.current.y + g.dy;
+      const clamped = clampPosition(nx, ny, btnSize.w, btnSize.h);
+      posRef.current = {
+        x: clamped.x,
+        y: clamped.y
+      };
+      btnX.setValue(clamped.x);
+      btnY.setValue(clamped.y);
+    },
+    onPanResponderRelease: (_, g) => {
+      if (Math.abs(g.dx) < 5 && Math.abs(g.dy) < 5) {
         handleOpen();
+        return;
       }
+      snapToEdge(posRef.current.x, posRef.current.y, true);
+      inactivityTimer.current = setTimeout(() => setBtnHidden(true), 8000);
     }
   })).current;
   (0, _react.useEffect)(() => {
-    // whenever button size is measured or screen dims change, ensure current pos is within bounds
-    if (!isPanReady) return;
-    /**
-     * ensureInBounds
-     * Adjust current pan values so the button stays inside configured margins.
-     */
-    const ensureInBounds = () => {
-      try {
-        const {
-          width: screenW,
-          height: screenH
-        } = _reactNative.Dimensions.get("window");
-        const bw = btnSize.width || 60;
-        const bh = btnSize.height || 40;
-        const minX = HORIZONTAL_MARGIN;
-        const maxX = Math.max(minX, screenW - HORIZONTAL_MARGIN - bw);
-        const minY = TOP_MARGIN;
-        const maxY = Math.max(minY, screenH - BOTTOM_MARGIN - bh);
-        const curX = pan.x.__getValue ? pan.x.__getValue() : pan.x._value;
-        const curY = pan.y.__getValue ? pan.y.__getValue() : pan.y._value;
-        const clampedX = clampValue(curX, minX, maxX);
-        const clampedY = clampValue(curY, minY, maxY);
-        if (clampedX !== curX || clampedY !== curY) {
-          _reactNative.Animated.timing(pan, {
-            toValue: {
-              x: clampedX,
-              y: clampedY
-            },
-            duration: 180,
-            useNativeDriver: false
-          }).start(() => {
-            (0, _storage.setStorageValue)(FLOATING_BUTTON_POSITION_KEY, {
-              x: clampedX,
-              y: clampedY
-            });
-          });
-        }
-      } catch (_e) {
-        // ignore
-      }
-    };
-    ensureInBounds();
-    // also run on orientation change
-    const sub = _reactNative.Dimensions.addEventListener?.("change", ensureInBounds);
+    const sub = _reactNative.Dimensions.addEventListener?.("change", snapToEdgeOnResize);
     return () => sub?.remove?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPanReady, btnSize.width, btnSize.height]);
-
-  /**
-   * renderFloatingButton
-   * Returns the draggable floating debug button (Animated + PanResponder).
-   */
-  const renderFloatingButton = () => /*#__PURE__*/_react.default.createElement(_reactNative.Animated.View, _extends({
-    style: {
-      position: "absolute",
-      transform: pan.getTranslateTransform(),
-      zIndex: 9999
-    },
-    pointerEvents: "auto"
-  }, panResponder.panHandlers), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
-    activeOpacity: 0.8,
-    style: styles.floatingButton,
-    testID: "network-monitor-debug-button",
-    onPress: handleOpen,
-    onLongPress: () => setShowFloatingButton(false),
-    onLayout: e => setBtnSize({
-      width: e.nativeEvent.layout.width,
-      height: e.nativeEvent.layout.height
-    })
-  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-    style: styles.floatingButtonText
-  }, "DEBUG")));
+  }, [btnSize]);
+  (0, _react.useEffect)(() => {
+    if (!showPasswordModal) {
+      btnX.stopAnimation();
+      btnY.stopAnimation();
+      btnX.setValue(savedPos.current.x);
+      btnY.setValue(savedPos.current.y);
+    }
+  }, [showPasswordModal]);
+  const handleCloseDebugger = () => {
+    setShowMonitor(false);
+    setShowFloatingButton(false);
+  };
+  const showBtn = showFloatingButton;
+  const ctxValue = {
+    openDebugger: handleOpen,
+    closeDebugger: handleCloseDebugger,
+    isDebuggerOpen: showMonitor
+  };
   return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: {
       flex: 1
     },
-    onTouchEnd: handleClick
+    onTouchEnd: enableTapGesture ? handleClick : undefined
   }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: {
       flex: 1
     },
     pointerEvents: "box-none"
-  }, children), /*#__PURE__*/_react.default.createElement(_reactNative.Modal, {
+  }, /*#__PURE__*/_react.default.createElement(_ErrorBoundary.ErrorBoundary, null, /*#__PURE__*/_react.default.createElement(_DebugContext.default.Provider, {
+    value: ctxValue
+  }, children))), /*#__PURE__*/_react.default.createElement(_reactNative.Modal, {
+    transparent: true,
     visible: showMonitor,
     animationType: "slide",
     supportedOrientations: ["landscape", "landscape-left", "landscape-right"]
@@ -623,7 +616,41 @@ const DebugTrigger = ({
     onPress: handlePasswordSubmit
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
     style: styles.submitText
-  }, t.confirm)))))))))), !showMonitor && !showPasswordModal && showFloatingButton && isPanReady && renderFloatingButton());
+  }, t.confirm)))))))))), /*#__PURE__*/_react.default.createElement(_reactNative.Animated.View, {
+    pointerEvents: showBtn && !showMonitor && !showPasswordModal ? 'box-none' : 'none',
+    style: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      zIndex: 99999,
+      opacity: showBtn && !showMonitor && !showPasswordModal ? 1 : 0
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Animated.View, _extends({
+    style: {
+      position: "absolute",
+      transform: [{
+        translateX: btnX
+      }, {
+        translateY: btnY
+      }]
+    }
+  }, panResponder.panHandlers), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    activeOpacity: 0.85,
+    style: [styles.floatingButton, {
+      opacity: btnHidden ? 0.35 : 1
+    }],
+    testID: "network-monitor-debug-button",
+    onPress: handleOpen,
+    onLongPress: () => setShowFloatingButton(false),
+    onLayout: e => setBtnSize({
+      w: e.nativeEvent.layout.width,
+      h: e.nativeEvent.layout.height
+    })
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: styles.floatingButtonText
+  }, "DEBUG")))));
 };
 exports.DebugTrigger = DebugTrigger;
 //# sourceMappingURL=DebugTrigger.js.map

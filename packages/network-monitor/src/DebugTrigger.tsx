@@ -21,15 +21,22 @@ import {
   useColorScheme,
 } from "react-native";
 import { getStorageValue, setStorageValue } from "./storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { setupConsoleMonitor } from "./ConsoleMonitor";
 import { DebugMonitor } from "./DebugMonitor";
 import { Logger } from "./Logger";
+import DebugContext from "./DebugContext";
 import { setupNetworkMonitor } from "./NetworkMonitor";
+import { setupWebSocketMonitor } from "./WebSocketMonitor";
+import { startPerformanceMonitor } from "./PerformanceMonitor";
+import { ErrorBoundary, setupGlobalErrorHandlers } from "./ErrorBoundary";
+import { startPersistence, restoreLogs } from "./PersistenceManager";
 
 export interface DebugTriggerProps {
   children?: ReactNode;
   password?: string;
   passwordFrequency?: "all-time" | "per-install" | "app-active";
+  passwordOptional?: boolean;
   enableShake?: boolean;
   clicksNeeded?: number;
   isDemo?: boolean;
@@ -39,6 +46,8 @@ export interface DebugTriggerProps {
   prodUrl?: string;
   testUrl?: string;
   enabled?: boolean;
+  enableTapGesture?: boolean;
+  floatingButtonMargin?: number;
   checkAccess?: () => boolean | Promise<boolean>;
   language?: "az" | "en" | "ru" | "tr" | "auto";
   theme?: "light" | "dark" | "auto";
@@ -220,6 +229,7 @@ export const DebugTrigger = ({
   children,
   password = "2024",
   passwordFrequency = "all-time",
+  passwordOptional = false,
   enableShake = false,
   clicksNeeded = 5,
   isDemo = false,
@@ -229,11 +239,15 @@ export const DebugTrigger = ({
   prodUrl,
   testUrl,
   enabled = true,
+  enableTapGesture = true,
+  floatingButtonMargin = 16,
   checkAccess,
   language = "auto",
   theme = "auto",
 }: DebugTriggerProps) => {
   const systemScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
+  const safeM = { x: floatingButtonMargin + insets.right, y: floatingButtonMargin + insets.bottom, left: floatingButtonMargin + insets.left, top: floatingButtonMargin + insets.top };
   const effectiveTheme: "dark" | "light" =
     theme === "auto" ? (systemScheme === "light" ? "light" : "dark") : theme;
   const isLight = effectiveTheme === "light";
@@ -252,8 +266,21 @@ export const DebugTrigger = ({
   useEffect(() => {
     setupNetworkMonitor();
     setupConsoleMonitor();
+    setupWebSocketMonitor();
+    setupGlobalErrorHandlers();
+    startPerformanceMonitor();
+    startPersistence(15000);
 
-    // Set initial base URL if not already set
+    restoreLogs().then((savedLogs) => {
+      if (savedLogs.length > 0) {
+        savedLogs.forEach((log) => {
+          if (log.message && !log.url) {
+            Logger.logInfo(log.message, log.requestData);
+          }
+        });
+      }
+    });
+
     if (!Logger.getBaseUrl()) {
       const initialUrl = isDemo ? testUrl : prodUrl;
       if (initialUrl) {
@@ -279,6 +306,13 @@ export const DebugTrigger = ({
       const hasAccess = await checkAccess();
       if (!hasAccess) return;
     }
+
+    if (passwordOptional) {
+      setShowMonitor(true);
+      setShowFloatingButton(true);
+      return;
+    }
+
     if (!password) {
       setShowMonitor(true);
       setShowFloatingButton(true);
@@ -303,6 +337,7 @@ export const DebugTrigger = ({
       }
     }
 
+    savedPos.current = { x: posRef.current.x, y: posRef.current.y };
     setShowPasswordModal(true);
   };
 
@@ -312,6 +347,7 @@ export const DebugTrigger = ({
    * Resets the click count after 2 seconds of inactivity.
    */
   const handleClick = () => {
+    if (!enableTapGesture) return;
     if (showFloatingButton || showPasswordModal || showMonitor) {
       return;
     }
@@ -351,254 +387,161 @@ export const DebugTrigger = ({
     }
   };
 
-  // Floating button: draggable + always-on-top via transparent Modal
-  const FLOATING_BUTTON_POSITION_KEY = "networkMonitorFloatingButtonPosition";
-  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
-  const [isPanReady, setIsPanReady] = useState(false);
-  const [btnSize, setBtnSize] = useState({ width: 0, height: 0 });
+  const BTN_STORAGE_KEY = "networkMonitorBtnPos";
+  const { width: initW, height: initH } = Dimensions.get("window");
+  const initX = Math.min(initW - 80 - insets.right, Math.max(safeM.left, initW - 80 - insets.right));
+  const initY = Math.min(initH * 0.5, Math.max(60 + insets.top, initH * 0.5));
+  const btnX = useRef(new Animated.Value(initX)).current;
+  const btnY = useRef(new Animated.Value(initY)).current;
+  const [btnSize, setBtnSize] = useState({ w: 60, h: 40 });
+  const [btnHidden, setBtnHidden] = useState(false);
+  const inactivityTimer = useRef<any>(null);
 
-  // Inactivity / disabled state for floating button
-  const [floatingDisabled, setFloatingDisabled] = useState(false);
-  const inactivityTimerRef = useRef<any>(null);
-  const INACTIVITY_MS = 3000; // 3 seconds
+  const posRef = useRef({ x: initX, y: initY });
+  const gestureRef = useRef({ x: 0, y: 0 });
+  const savedPos = useRef({ x: initX, y: initY });
 
-  const resetInactivityTimer = () => {
-    try {
-      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-    } catch (_e) {
-      // ignore
-    }
-    setFloatingDisabled(false);
-    inactivityTimerRef.current = setTimeout(
-      () => setFloatingDisabled(true),
-      INACTIVITY_MS,
-    );
+  const clampPosition = (x: number, y: number, bw: number, bh: number) => {
+    const { width: sw, height: sh } = Dimensions.get("window");
+    return {
+      x: Math.max(safeM.left, Math.min(sw - bw - safeM.x, x)),
+      y: Math.max(safeM.top, Math.min(sh - bh - safeM.y, y)),
+    };
   };
 
   useEffect(() => {
     if (showFloatingButton) {
-      resetInactivityTimer();
+      setBtnHidden(false);
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      inactivityTimer.current = setTimeout(() => setBtnHidden(true), 8000);
     } else {
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-        inactivityTimerRef.current = null;
-      }
-      setFloatingDisabled(false);
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      setBtnHidden(false);
     }
-
-    return () => {
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-        inactivityTimerRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { if (inactivityTimer.current) clearTimeout(inactivityTimer.current); };
   }, [showFloatingButton]);
-
-  const HORIZONTAL_MARGIN = 20; // horizontal margin from both edges
-  const TOP_MARGIN = 40; // top margin
-  const BOTTOM_MARGIN = 30; // bottom margin
-
-  /**
-   * clampValue
-   * Clamp a number between a minimum and maximum.
-   */
-  const clampValue = (v: number, a: number, b: number) =>
-    Math.max(a, Math.min(b, v));
 
   useEffect(() => {
     (async () => {
-      const saved = await getStorageValue(
-        FLOATING_BUTTON_POSITION_KEY,
-        undefined as any,
-      ) as any;
-      const { height } = Dimensions.get("window");
-      const defaultX = 50;
-      const defaultY = height - 50;
-      if (
-        saved &&
-        typeof saved === "object" &&
-        "x" in saved &&
-        "y" in saved &&
-        typeof (saved as any).x === "number" &&
-        typeof (saved as any).y === "number"
-      ) {
-        pan.setValue({ x: (saved as any).x, y: (saved as any).y });
-      } else {
-        pan.setValue({ x: defaultX, y: defaultY });
-      }
-      setIsPanReady(true);
+      const saved = await getStorageValue(BTN_STORAGE_KEY, null) as any;
+      if (!saved) return;
+      const { width: sw, height: sh } = Dimensions.get("window");
+      const dx = saved.x ?? sw - 80;
+      const dy = saved.y ?? sh * 0.5;
+      const clamped = clampPosition(dx, dy, btnSize.w, btnSize.h);
+      posRef.current = { x: clamped.x, y: clamped.y };
+      btnX.setValue(clamped.x);
+      btnY.setValue(clamped.y);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const snapToEdge = (x: number, y: number, anim: boolean) => {
+    const { width: sw } = Dimensions.get("window");
+    const bw = btnSize.w;
+    const bh = btnSize.h;
+    const clamped = clampPosition(x, y, bw, bh);
+    const leftDist = clamped.x - safeM.left;
+    const rightDist = sw - clamped.x - bw - safeM.x;
+    const snapX = leftDist < rightDist ? safeM.left : sw - bw - safeM.x;
+
+    posRef.current = { x: snapX, y: clamped.y };
+
+    if (anim) {
+      Animated.spring(btnX, { toValue: snapX, useNativeDriver: false, friction: 7, tension: 40 }).start();
+      Animated.spring(btnY, { toValue: clamped.y, useNativeDriver: false, friction: 7, tension: 40 }).start();
+    } else {
+      btnX.setValue(snapX);
+      btnY.setValue(clamped.y);
+    }
+
+    setStorageValue(BTN_STORAGE_KEY, { x: snapX, y: clamped.y });
+  };
+
+  const snapToEdgeOnResize = () => {
+    const { width: sw, height: sh } = Dimensions.get("window");
+    const bw = btnSize.w;
+    const bh = btnSize.h;
+    const clamped = clampPosition(posRef.current.x, posRef.current.y, bw, bh);
+    const leftDist = clamped.x - safeM.left;
+    const rightDist = sw - clamped.x - bw - safeM.x;
+    const snapX = leftDist < rightDist ? safeM.left : sw - bw - safeM.x;
+    const finalPos = { x: snapX, y: clamped.y };
+    posRef.current = finalPos;
+    btnX.setValue(snapX);
+    btnY.setValue(clamped.y);
+    setStorageValue(BTN_STORAGE_KEY, finalPos);
+  };
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 2 || Math.abs(g.dy) > 2,
       onPanResponderGrant: () => {
-        // capture current offset
-        try {
-          pan.setOffset({
-            x: (pan.x as any)._value ?? 0,
-            y: (pan.y as any)._value ?? 0,
-          });
-        } catch (_e) {
-          // ignore
-        }
-        pan.setValue({ x: 0, y: 0 });
+        gestureRef.current = { x: posRef.current.x, y: posRef.current.y };
+        setBtnHidden(false);
+        if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
       },
-      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
-        useNativeDriver: false,
-      }),
-      onPanResponderRelease: (_evt, gestureState) => {
-        const { dx, dy } = gestureState;
-        pan.flattenOffset();
-
-        // get raw final values
-        let finalX = (pan.x as any).__getValue
-          ? (pan.x as any).__getValue()
-          : (pan.x as any)._value;
-        let finalY = (pan.y as any).__getValue
-          ? (pan.y as any).__getValue()
-          : (pan.y as any)._value;
-
-        // compute bounds based on measured button size (fallback sizes if not yet measured)
-        const { width: screenW, height: screenH } = Dimensions.get("window");
-        const bw = btnSize.width || 60;
-        const bh = btnSize.height || 40;
-        const minX = HORIZONTAL_MARGIN;
-        const maxX = Math.max(minX, screenW - HORIZONTAL_MARGIN - bw);
-        const minY = TOP_MARGIN;
-        const maxY = Math.max(minY, screenH - BOTTOM_MARGIN - bh);
-
-        const clampedX = clampValue(finalX, minX, maxX);
-        const clampedY = clampValue(finalY, minY, maxY);
-
-        if (clampedX !== finalX || clampedY !== finalY) {
-          // animate back into bounds
-          Animated.timing(pan, {
-            toValue: { x: clampedX, y: clampedY },
-            duration: 180,
-            useNativeDriver: false,
-          }).start(() => {
-            setStorageValue(FLOATING_BUTTON_POSITION_KEY, {
-              x: clampedX,
-              y: clampedY,
-            });
-          });
-        } else {
-          setStorageValue(FLOATING_BUTTON_POSITION_KEY, {
-            x: finalX,
-            y: finalY,
-          });
-        }
-
-        // treat very small movement as a tap
-        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) {
+      onPanResponderMove: (_, g) => {
+        const nx = gestureRef.current.x + g.dx;
+        const ny = gestureRef.current.y + g.dy;
+        const clamped = clampPosition(nx, ny, btnSize.w, btnSize.h);
+        posRef.current = { x: clamped.x, y: clamped.y };
+        btnX.setValue(clamped.x);
+        btnY.setValue(clamped.y);
+      },
+      onPanResponderRelease: (_, g) => {
+        if (Math.abs(g.dx) < 5 && Math.abs(g.dy) < 5) {
           handleOpen();
+          return;
         }
+        snapToEdge(posRef.current.x, posRef.current.y, true);
+        inactivityTimer.current = setTimeout(() => setBtnHidden(true), 8000);
       },
     }),
   ).current;
 
   useEffect(() => {
-    // whenever button size is measured or screen dims change, ensure current pos is within bounds
-    if (!isPanReady) return;
-    /**
-     * ensureInBounds
-     * Adjust current pan values so the button stays inside configured margins.
-     */
-    const ensureInBounds = () => {
-      try {
-        const { width: screenW, height: screenH } = Dimensions.get("window");
-        const bw = btnSize.width || 60;
-        const bh = btnSize.height || 40;
-        const minX = HORIZONTAL_MARGIN;
-        const maxX = Math.max(minX, screenW - HORIZONTAL_MARGIN - bw);
-        const minY = TOP_MARGIN;
-        const maxY = Math.max(minY, screenH - BOTTOM_MARGIN - bh);
-
-        const curX = (pan.x as any).__getValue
-          ? (pan.x as any).__getValue()
-          : (pan.x as any)._value;
-        const curY = (pan.y as any).__getValue
-          ? (pan.y as any).__getValue()
-          : (pan.y as any)._value;
-
-        const clampedX = clampValue(curX, minX, maxX);
-        const clampedY = clampValue(curY, minY, maxY);
-
-        if (clampedX !== curX || clampedY !== curY) {
-          Animated.timing(pan, {
-            toValue: { x: clampedX, y: clampedY },
-            duration: 180,
-            useNativeDriver: false,
-          }).start(() => {
-            setStorageValue(FLOATING_BUTTON_POSITION_KEY, {
-              x: clampedX,
-              y: clampedY,
-            });
-          });
-        }
-      } catch (_e) {
-        // ignore
-      }
-    };
-
-    ensureInBounds();
-    // also run on orientation change
-    const sub = Dimensions.addEventListener?.("change", ensureInBounds);
+    const sub = Dimensions.addEventListener?.("change", snapToEdgeOnResize);
     return () => sub?.remove?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPanReady, btnSize.width, btnSize.height]);
+  }, [btnSize]);
 
-  /**
-   * renderFloatingButton
-   * Returns the draggable floating debug button (Animated + PanResponder).
-   */
-  const renderFloatingButton = () => (
-    <Animated.View
-      style={{
-        position: "absolute",
-        transform: pan.getTranslateTransform(),
-        zIndex: 9999,
-      }}
-      pointerEvents="auto"
-      {...panResponder.panHandlers}
-    >
-      <TouchableOpacity
-        activeOpacity={0.8}
-        style={styles.floatingButton}
-        testID="network-monitor-debug-button"
-        onPress={handleOpen}
-        onLongPress={() => setShowFloatingButton(false)}
-        onLayout={(e) =>
-          setBtnSize({
-            width: e.nativeEvent.layout.width,
-            height: e.nativeEvent.layout.height,
-          })
-        }
-      >
-        <Text style={styles.floatingButtonText}>DEBUG</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
+  useEffect(() => {
+    if (!showPasswordModal) {
+      btnX.stopAnimation();
+      btnY.stopAnimation();
+      btnX.setValue(savedPos.current.x);
+      btnY.setValue(savedPos.current.y);
+    }
+  }, [showPasswordModal]);
+
+  const handleCloseDebugger = () => {
+    setShowMonitor(false);
+    setShowFloatingButton(false);
+  };
+
+  const showBtn = showFloatingButton;
+
+  const ctxValue = {
+    openDebugger: handleOpen,
+    closeDebugger: handleCloseDebugger,
+    isDebuggerOpen: showMonitor,
+  };
 
   return (
-    <View style={{ flex: 1 }} onTouchEnd={handleClick}>
+    <View style={{ flex: 1 }} onTouchEnd={enableTapGesture ? handleClick : undefined}>
       <View style={{ flex: 1 }} pointerEvents="box-none">
-        {children}
+        <ErrorBoundary>
+          <DebugContext.Provider value={ctxValue}>
+            {children}
+          </DebugContext.Provider>
+        </ErrorBoundary>
       </View>
 
       <Modal
+        transparent
         visible={showMonitor}
         animationType="slide"
-        supportedOrientations={[
-          "landscape",
-          "landscape-left",
-          "landscape-right",
-        ]}
+        supportedOrientations={["landscape", "landscape-left", "landscape-right"]}
       >
         <View style={{ flex: 1 }} pointerEvents="box-none">
           <DebugMonitor
@@ -623,11 +566,7 @@ export const DebugTrigger = ({
         transparent
         visible={showPasswordModal}
         animationType="fade"
-        supportedOrientations={[
-          "landscape",
-          "landscape-left",
-          "landscape-right",
-        ]}
+        supportedOrientations={["landscape", "landscape-left", "landscape-right"]}
       >
         <View style={{ flex: 1 }} pointerEvents="box-none">
           <TouchableWithoutFeedback onPress={() => setShowPasswordModal(false)}>
@@ -637,20 +576,20 @@ export const DebugTrigger = ({
                 style={styles.keyboardView}
               >
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View style={[
-                      styles.modal,
-                      isLight && { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0' }
-                    ]}>
-                      <Text style={[styles.title, isLight && { color: '#0F172A' }]}>{t.login}</Text>
-                      <Text style={[styles.subtitle, isLight && { color: '#64748B' }]}>
-                        {t.clicks(clicksNeeded)}
-                      </Text>
-                      <TextInput
-                        secureTextEntry
-                        autoFocus
-                        style={[styles.input, isLight && { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', color: '#0F172A' }]}
-                        placeholder={t.passPlaceholder}
-                        placeholderTextColor={isLight ? '#94A3B8' : COLORS.textDim}
+                  <View style={[
+                    styles.modal,
+                    isLight && { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0' }
+                  ]}>
+                    <Text style={[styles.title, isLight && { color: '#0F172A' }]}>{t.login}</Text>
+                    <Text style={[styles.subtitle, isLight && { color: '#64748B' }]}>
+                      {t.clicks(clicksNeeded)}
+                    </Text>
+                    <TextInput
+                      secureTextEntry
+                      autoFocus
+                      style={[styles.input, isLight && { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', color: '#0F172A' }]}
+                      placeholder={t.passPlaceholder}
+                      placeholderTextColor={isLight ? '#94A3B8' : COLORS.textDim}
                       value={inputPassword}
                       onChangeText={setInputPassword}
                       onSubmitEditing={handlePasswordSubmit}
@@ -677,11 +616,43 @@ export const DebugTrigger = ({
         </View>
       </Modal>
 
-      {!showMonitor &&
-        !showPasswordModal &&
-        showFloatingButton &&
-        isPanReady &&
-        renderFloatingButton()}
+      <Animated.View
+        pointerEvents={showBtn && !showMonitor && !showPasswordModal ? 'box-none' : 'none'}
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: 99999,
+          opacity: showBtn && !showMonitor && !showPasswordModal ? 1 : 0,
+        }}
+      >
+        <Animated.View
+          style={{
+            position: "absolute",
+            transform: [
+              { translateX: btnX },
+              { translateY: btnY },
+            ],
+          }}
+          {...panResponder.panHandlers}
+        >
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={[styles.floatingButton, { opacity: btnHidden ? 0.35 : 1 }]}
+            testID="network-monitor-debug-button"
+            onPress={handleOpen}
+            onLongPress={() => setShowFloatingButton(false)}
+            onLayout={(e) => setBtnSize({
+              w: e.nativeEvent.layout.width,
+              h: e.nativeEvent.layout.height,
+            })}
+          >
+            <Text style={styles.floatingButtonText}>DEBUG</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
     </View>
   );
 };

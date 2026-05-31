@@ -4,13 +4,16 @@ export interface ThemeColors {
     surfaceLight: string;
     surfaceElevated: string;
     primary: string;
+    primaryDim: string;
     secondary: string;
     text: string;
     textDim: string;
     textSubtle: string;
     success: string;
+    successDim: string;
     warning: string;
     error: string;
+    errorDim: string;
     border: string;
     accent: string;
     glass: string;
@@ -19,118 +22,99 @@ export interface ThemeColors {
     shadow: string;
     overlay: string;
     jsonText: string;
+    jsonKey: string;
+    jsonString: string;
+    jsonNumber: string;
+    cardShadow: string;
+    tabActive: string;
+    tabInactive: string;
 }
 export declare const DARK_COLORS: ThemeColors;
 export declare const LIGHT_COLORS: ThemeColors;
-/**
- * getColors
- *
- * Resolve the color palette for a given theme.
- * @param theme - 'dark' | 'light'
- * @returns ThemeColors palette
- */
 export declare const getColors: (theme: "dark" | "light") => ThemeColors;
 export declare const COLORS: ThemeColors;
-/**
- * styleSheet
- *
- * Centralized styles for the Debug Monitor component.
- * Accepts the resolved ThemeColors so styles update with the theme.
- */
 declare const styleSheet: (C?: ThemeColors) => {
     container: {
         backgroundColor: string;
         flex: number;
     };
     header: {
-        alignItems: "center";
         backgroundColor: string;
         borderBottomColor: string;
         borderBottomWidth: number;
-        flexDirection: "row";
-        justifyContent: "space-between";
         paddingHorizontal: number;
-        paddingVertical: number;
         paddingTop: number;
     };
-    headerActions: {
-        alignItems: "center";
+    headerTop: {
         flexDirection: "row";
+        alignItems: "center";
+        justifyContent: "space-between";
+        paddingVertical: number;
+    };
+    headerLeft: {
+        flexDirection: "row";
+        alignItems: "center";
         gap: number;
     };
-    headerInfo: {
-        flex: number;
-    };
-    titleRow: {
-        alignItems: "center";
-        flexDirection: "row";
-        marginBottom: number;
-    };
-    titleDot: {
-        backgroundColor: string;
-        borderRadius: number;
-        height: number;
-        marginRight: number;
-        shadowColor: string;
-        shadowOffset: {
-            width: number;
-            height: number;
-        };
-        shadowOpacity: number;
-        shadowRadius: number;
+    headerLogo: {
         width: number;
+        height: number;
+        borderRadius: number;
+        backgroundColor: string;
+        alignItems: "center";
+        justifyContent: "center";
     };
-    headerTitle: {
+    headerLogoText: {
         color: string;
         fontSize: number;
         fontWeight: "900";
-        letterSpacing: number;
     };
-    headerSubtitle: {
-        color: string;
-        fontSize: number;
-        fontWeight: "600";
-        letterSpacing: number;
-    };
-    closeBtn: {
-        alignItems: "center";
-        backgroundColor: string;
-        borderRadius: number;
-        justifyContent: "center";
-        paddingHorizontal: number;
-        paddingVertical: number;
-    };
-    closeBtnText: {
+    headerTitle: {
         color: string;
         fontSize: number;
         fontWeight: "800";
         letterSpacing: number;
     };
-    tabContainer: {
+    headerCount: {
+        color: string;
+        fontSize: number;
+        fontWeight: "600";
         backgroundColor: string;
-        borderBottomColor: string;
-        borderBottomWidth: number;
+        borderRadius: number;
+        paddingHorizontal: number;
+        paddingVertical: number;
+        overflow: "hidden";
+    };
+    headerActions: {
+        flexDirection: "row";
+        gap: number;
+    };
+    headerBtn: {
+        width: number;
+        height: number;
+        borderRadius: number;
+        backgroundColor: string;
+        alignItems: "center";
+        justifyContent: "center";
+    };
+    headerBtnText: {
+        fontSize: number;
+        color: string;
+    };
+    tabBar: {
+        backgroundColor: string;
+        paddingBottom: number;
     };
     tabScroll: {
         paddingHorizontal: number;
     };
-    tab: {
-        alignItems: "center";
+    tabItem: {
         paddingHorizontal: number;
         paddingVertical: number;
         position: "relative";
-    };
-    tabActive: {};
-    activeTabDot: {
-        backgroundColor: string;
-        borderRadius: number;
-        bottom: number;
-        height: number;
-        position: "absolute";
-        width: number;
+        alignItems: "center";
     };
     tabText: {
-        color: string;
         fontSize: number;
         fontWeight: "700";
         letterSpacing: number;
@@ -138,30 +122,42 @@ declare const styleSheet: (C?: ThemeColors) => {
     tabTextActive: {
         color: string;
     };
+    tabTextInactive: {
+        color: string;
+    };
+    tabBadge: {
+        fontSize: number;
+        fontWeight: "700";
+        marginLeft: number;
+    };
+    tabActiveLine: {
+        height: number;
+        backgroundColor: string;
+        borderRadius: number;
+        position: "absolute";
+        bottom: number;
+    };
     searchRow: {
         paddingHorizontal: number;
         paddingTop: number;
         paddingBottom: number;
     };
     searchBox: {
+        flexDirection: "row";
         alignItems: "center";
         backgroundColor: string;
-        borderColor: string;
         borderRadius: number;
-        borderWidth: number;
-        flexDirection: "row";
-        height: number;
         paddingHorizontal: number;
-    };
-    searchIcon: {
-        fontSize: number;
-        marginRight: number;
+        height: number;
+        borderWidth: number;
+        borderColor: string;
     };
     searchInput: {
         color: string;
         flex: number;
         fontSize: number;
         fontWeight: "500";
+        marginLeft: number;
     };
     clearSearch: {
         color: string;
@@ -175,25 +171,26 @@ declare const styleSheet: (C?: ThemeColors) => {
         paddingBottom: number;
     };
     filterPill: {
-        alignItems: "center";
-        backgroundColor: string;
-        borderColor: string;
-        borderRadius: number;
-        borderWidth: number;
         paddingHorizontal: number;
         paddingVertical: number;
+        borderRadius: number;
+        borderWidth: number;
+        borderColor: string;
+        backgroundColor: string;
     };
     filterPillActive: {
         backgroundColor: string;
         borderColor: string;
     };
     filterPillText: {
-        color: string;
         fontSize: number;
         fontWeight: "700";
         letterSpacing: number;
     };
     filterPillTextActive: {
+        color: string;
+    };
+    filterPillTextInactive: {
         color: string;
     };
     listContent: {
@@ -202,10 +199,7 @@ declare const styleSheet: (C?: ThemeColors) => {
     };
     logItem: {
         backgroundColor: string;
-        borderColor: string;
         borderRadius: number;
-        borderWidth: number;
-        flexDirection: "row";
         marginBottom: number;
         overflow: "hidden";
         shadowColor: string;
@@ -221,40 +215,32 @@ declare const styleSheet: (C?: ThemeColors) => {
         width: number;
     };
     logBody: {
-        flex: number;
         padding: number;
     };
-    logHeader: {
-        alignItems: "center";
+    logRow: {
         flexDirection: "row";
+        alignItems: "center";
+        gap: number;
         marginBottom: number;
     };
-    badge: {
-        borderRadius: number;
-        marginRight: number;
+    logChip: {
         paddingHorizontal: number;
         paddingVertical: number;
+        borderRadius: number;
     };
-    logMethod: {
+    logChipText: {
         fontSize: number;
         fontWeight: "900";
         letterSpacing: number;
     };
-    statusChip: {
-        borderRadius: number;
-        marginRight: number;
+    logStatusChip: {
         paddingHorizontal: number;
         paddingVertical: number;
+        borderRadius: number;
     };
-    statusChipText: {
+    logStatusText: {
         fontSize: number;
         fontWeight: "900";
-        letterSpacing: number;
-    };
-    logStatus: {
-        fontSize: number;
-        fontWeight: "900";
-        marginHorizontal: number;
     };
     logTime: {
         color: string;
@@ -269,16 +255,13 @@ declare const styleSheet: (C?: ThemeColors) => {
         lineHeight: number;
     };
     logMetaBox: {
-        alignItems: "center";
         flexDirection: "row";
         gap: number;
         marginTop: number;
     };
     metaBadge: {
         backgroundColor: string;
-        borderColor: string;
         borderRadius: number;
-        borderWidth: number;
         paddingHorizontal: number;
         paddingVertical: number;
     };
@@ -288,8 +271,8 @@ declare const styleSheet: (C?: ThemeColors) => {
         fontWeight: "700";
     };
     emptyContainer: {
-        alignItems: "center";
         flex: number;
+        alignItems: "center";
         justifyContent: "center";
         padding: number;
     };
@@ -300,40 +283,42 @@ declare const styleSheet: (C?: ThemeColors) => {
     emptyText: {
         color: string;
         fontSize: number;
-        fontWeight: "600";
+        fontWeight: "700";
         marginBottom: number;
-        textAlign: "center";
     };
     emptySubText: {
         color: string;
         fontSize: number;
-        fontWeight: "400";
         textAlign: "center";
     };
     settingsContainer: {
         flex: number;
         padding: number;
     };
-    section: {
+    settingsSection: {
         marginBottom: number;
     };
-    sectionHeaderBox: {
-        borderLeftColor: string;
-        borderLeftWidth: number;
+    settingsSectionHeader: {
+        flexDirection: "row";
+        alignItems: "center";
+        gap: number;
         marginBottom: number;
-        paddingLeft: number;
     };
-    sectionTitle: {
+    settingsSectionLine: {
+        width: number;
+        height: number;
+        backgroundColor: string;
+        borderRadius: number;
+    };
+    settingsSectionTitle: {
         color: string;
         fontSize: number;
-        fontWeight: "900";
+        fontWeight: "800";
         letterSpacing: number;
     };
-    card: {
+    settingsCard: {
         backgroundColor: string;
-        borderColor: string;
         borderRadius: number;
-        borderWidth: number;
         overflow: "hidden";
         shadowColor: string;
         shadowOffset: {
@@ -344,66 +329,16 @@ declare const styleSheet: (C?: ThemeColors) => {
         shadowRadius: number;
         elevation: number;
     };
-    inputLabel: {
-        color: string;
-        fontSize: number;
-        fontWeight: "800";
-        letterSpacing: number;
-        marginBottom: number;
-    };
-    textInput: {
-        borderBottomColor: string;
-        borderBottomWidth: number;
-        color: string;
-        fontSize: number;
-        fontWeight: "600";
-        marginBottom: number;
-        paddingVertical: number;
-    };
-    saveBtn: {
-        alignItems: "center";
-        backgroundColor: string;
-        borderRadius: number;
-        elevation: number;
-        padding: number;
-        shadowColor: string;
-        shadowOffset: {
-            width: number;
-            height: number;
-        };
-        shadowOpacity: number;
-        shadowRadius: number;
-    };
-    saveBtnText: {
-        color: string;
-        fontSize: number;
-        fontWeight: "900";
-        letterSpacing: number;
-    };
-    toolBtn: {
-        alignItems: "center";
-        borderColor: string;
-        borderRadius: number;
-        borderWidth: number;
-        margin: number;
-        padding: number;
-    };
-    toolBtnText: {
-        color: string;
-        fontSize: number;
-        fontWeight: "700";
-        letterSpacing: number;
-    };
     cardInner: {
         padding: number;
     };
     urlOption: {
-        alignItems: "center";
-        borderBottomColor: string;
-        borderBottomWidth: number;
         flexDirection: "row";
+        alignItems: "center";
         justifyContent: "space-between";
         padding: number;
+        borderBottomColor: string;
+        borderBottomWidth: number;
     };
     urlOptionLast: {
         borderBottomWidth: number;
@@ -428,17 +363,17 @@ declare const styleSheet: (C?: ThemeColors) => {
         fontSize: number;
     };
     optionActions: {
-        alignItems: "center";
         flexDirection: "row";
+        alignItems: "center";
         gap: number;
     };
     deleteBtn: {
-        alignItems: "center";
-        backgroundColor: string;
-        borderRadius: number;
-        height: number;
-        justifyContent: "center";
         width: number;
+        height: number;
+        borderRadius: number;
+        backgroundColor: string;
+        alignItems: "center";
+        justifyContent: "center";
     };
     deleteBtnText: {
         color: string;
@@ -446,9 +381,65 @@ declare const styleSheet: (C?: ThemeColors) => {
         fontWeight: "900";
     };
     activeDot: {
+        width: number;
+        height: number;
+        borderRadius: number;
+        backgroundColor: string;
+    };
+    inputLabel: {
+        color: string;
+        fontSize: number;
+        fontWeight: "800";
+        letterSpacing: number;
+        marginBottom: number;
+    };
+    textInput: {
+        color: string;
+        fontSize: number;
+        fontWeight: "600";
+        paddingVertical: number;
+        paddingHorizontal: number;
         backgroundColor: string;
         borderRadius: number;
-        height: number;
+        borderWidth: number;
+        borderColor: string;
+        marginBottom: number;
+    };
+    saveBtn: {
+        backgroundColor: string;
+        borderRadius: number;
+        padding: number;
+        alignItems: "center";
+    };
+    saveBtnText: {
+        color: string;
+        fontSize: number;
+        fontWeight: "900";
+        letterSpacing: number;
+    };
+    toolBtn: {
+        borderWidth: number;
+        borderColor: string;
+        borderRadius: number;
+        padding: number;
+        alignItems: "center";
+    };
+    toolBtnText: {
+        color: string;
+        fontSize: number;
+        fontWeight: "700";
+        letterSpacing: number;
+    };
+    detailOverlay: {
+        flex: number;
+        backgroundColor: string;
+        justifyContent: "flex-end";
+    };
+    detailSheet: {
+        backgroundColor: string;
+        borderTopLeftRadius: number;
+        borderTopRightRadius: number;
+        maxHeight: "88%";
         shadowColor: string;
         shadowOffset: {
             width: number;
@@ -456,104 +447,110 @@ declare const styleSheet: (C?: ThemeColors) => {
         };
         shadowOpacity: number;
         shadowRadius: number;
+        elevation: number;
+    };
+    detailHandle: {
         width: number;
-    };
-    detailsModal: {
+        height: number;
+        borderRadius: number;
         backgroundColor: string;
-        flex: number;
+        alignSelf: "center";
+        marginTop: number;
+        marginBottom: number;
     };
-    detailsHeader: {
-        backgroundColor: string;
-        borderBottomColor: string;
-        borderBottomWidth: number;
-        paddingBottom: number;
-    };
-    detailsTopRow: {
-        alignItems: "center";
+    detailHeader: {
         flexDirection: "row";
+        alignItems: "center";
         justifyContent: "space-between";
         paddingHorizontal: number;
         paddingVertical: number;
+        borderBottomColor: string;
+        borderBottomWidth: number;
     };
-    detailsPerfText: {
+    detailBack: {
+        width: number;
+        height: number;
+        borderRadius: number;
+        backgroundColor: string;
+        alignItems: "center";
+        justifyContent: "center";
+    };
+    detailBackText: {
         color: string;
         fontSize: number;
         fontWeight: "700";
     };
-    backBtnText: {
+    detailTitle: {
         color: string;
         fontSize: number;
-        fontWeight: "300";
+        fontWeight: "800";
     };
-    backBtn: {
-        paddingRight: number;
+    detailMenu: {
+        padding: number;
+    };
+    detailMenuText: {
+        color: string;
+        fontSize: number;
+        fontWeight: "700";
+    };
+    detailDropdown: {
+        backgroundColor: string;
+        borderRadius: number;
+        position: "absolute";
+        right: number;
+        top: number;
+        width: number;
+        zIndex: number;
+        shadowColor: string;
+        shadowOffset: {
+            width: number;
+            height: number;
+        };
+        shadowOpacity: number;
+        shadowRadius: number;
+        elevation: number;
+    };
+    detailDropdownItem: {
+        paddingHorizontal: number;
         paddingVertical: number;
+        borderBottomColor: string;
+        borderBottomWidth: number;
     };
-    menuBtn: {
-        paddingLeft: number;
-        paddingVertical: number;
-    };
-    menuBtnText: {
+    detailDropdownText: {
         color: string;
         fontSize: number;
         fontWeight: "600";
     };
-    dropdownMenu: {
-        backgroundColor: string;
-        borderColor: string;
-        borderRadius: number;
-        borderWidth: number;
-        elevation: number;
-        position: "absolute";
-        right: number;
-        shadowColor: string;
-        shadowOffset: {
-            width: number;
-            height: number;
-        };
-        shadowOpacity: number;
-        shadowRadius: number;
-        top: number;
-        width: number;
-        zIndex: number;
-    };
-    menuItem: {
-        borderBottomColor: string;
-        borderBottomWidth: number;
-        paddingHorizontal: number;
-        paddingVertical: number;
-    };
-    menuItemText: {
-        color: string;
-        fontSize: number;
-        fontWeight: "700";
-    };
-    detailsTabs: {
+    detailTabs: {
         flexDirection: "row";
         paddingHorizontal: number;
         paddingTop: number;
-    };
-    detailTab: {
-        alignItems: "center";
         borderBottomColor: string;
         borderBottomWidth: number;
+    };
+    detailTab: {
         flex: number;
+        alignItems: "center";
         paddingVertical: number;
+        borderBottomWidth: number;
+        borderBottomColor: string;
     };
     detailTabActive: {
         borderBottomColor: string;
     };
     detailTabText: {
-        color: string;
         fontSize: number;
         fontWeight: "700";
     };
     detailTabTextActive: {
         color: string;
     };
-    detailsContent: {
-        flex: number;
+    detailTabTextInactive: {
+        color: string;
+    };
+    detailContent: {
         padding: number;
+        paddingBottom: number;
     };
     sectionBox: {
         marginBottom: number;
@@ -561,10 +558,9 @@ declare const styleSheet: (C?: ThemeColors) => {
     sectionLabel: {
         color: string;
         fontSize: number;
-        fontWeight: "900";
+        fontWeight: "800";
         letterSpacing: number;
         marginBottom: number;
-        textTransform: "uppercase";
     };
     sectionValue: {
         color: string;
@@ -574,16 +570,193 @@ declare const styleSheet: (C?: ThemeColors) => {
     };
     jsonBox: {
         backgroundColor: string;
-        borderColor: string;
         borderRadius: number;
-        borderWidth: number;
         padding: number;
+        borderWidth: number;
+        borderColor: string;
     };
     jsonText: {
         color: string;
         fontFamily: string;
         fontSize: number;
         lineHeight: number;
+    };
+    perfContainer: {
+        flex: number;
+        padding: number;
+    };
+    perfCard: {
+        backgroundColor: string;
+        borderRadius: number;
+        padding: number;
+        marginBottom: number;
+        shadowColor: string;
+        shadowOffset: {
+            width: number;
+            height: number;
+        };
+        shadowOpacity: number;
+        shadowRadius: number;
+        elevation: number;
+    };
+    perfRow: {
+        flexDirection: "row";
+        justifyContent: "space-between";
+        alignItems: "center";
+        marginBottom: number;
+    };
+    perfLabel: {
+        color: string;
+        fontSize: number;
+        fontWeight: "700";
+        letterSpacing: number;
+    };
+    perfValue: {
+        color: string;
+        fontSize: number;
+        fontWeight: "900";
+    };
+    perfValueGood: {
+        color: string;
+    };
+    perfValueWarning: {
+        color: string;
+    };
+    perfValueError: {
+        color: string;
+    };
+    fpsBar: {
+        height: number;
+        borderRadius: number;
+        backgroundColor: string;
+        marginTop: number;
+        overflow: "hidden";
+    };
+    fpsBarFill: {
+        height: "100%";
+        borderRadius: number;
+    };
+    perfToggle: {
+        flexDirection: "row";
+        alignItems: "center";
+        justifyContent: "space-between";
+        backgroundColor: string;
+        borderRadius: number;
+        padding: number;
+        marginBottom: number;
+        shadowColor: string;
+        shadowOffset: {
+            width: number;
+            height: number;
+        };
+        shadowOpacity: number;
+        shadowRadius: number;
+        elevation: number;
+    };
+    perfToggleText: {
+        color: string;
+        fontSize: number;
+        fontWeight: "700";
+    };
+    toggleTrack: {
+        width: number;
+        height: number;
+        borderRadius: number;
+        justifyContent: "center";
+        paddingHorizontal: number;
+    };
+    toggleTrackActive: {
+        backgroundColor: string;
+    };
+    toggleTrackInactive: {
+        backgroundColor: string;
+    };
+    toggleThumb: {
+        width: number;
+        height: number;
+        borderRadius: number;
+        backgroundColor: string;
+    };
+    wsContainer: {
+        flex: number;
+        padding: number;
+    };
+    wsItem: {
+        backgroundColor: string;
+        borderRadius: number;
+        padding: number;
+        marginBottom: number;
+        shadowColor: string;
+        shadowOffset: {
+            width: number;
+            height: number;
+        };
+        shadowOpacity: number;
+        shadowRadius: number;
+        elevation: number;
+    };
+    wsHeader: {
+        flexDirection: "row";
+        alignItems: "center";
+        marginBottom: number;
+    };
+    wsBadge: {
+        paddingHorizontal: number;
+        paddingVertical: number;
+        borderRadius: number;
+        marginRight: number;
+    };
+    wsBadgeText: {
+        fontSize: number;
+        fontWeight: "900";
+        letterSpacing: number;
+    };
+    wsUrl: {
+        color: string;
+        fontSize: number;
+        fontWeight: "600";
+        flex: number;
+    };
+    wsTime: {
+        color: string;
+        fontSize: number;
+        fontWeight: "600";
+    };
+    wsMessage: {
+        color: string;
+        fontSize: number;
+        marginTop: number;
+        lineHeight: number;
+    };
+    deviceRow: {
+        flexDirection: "row";
+        justifyContent: "space-between";
+        alignItems: "center";
+        backgroundColor: string;
+        borderRadius: number;
+        padding: number;
+        marginBottom: number;
+    };
+    deviceLabel: {
+        color: string;
+        fontSize: number;
+        fontWeight: "600";
+        flex: number;
+    };
+    deviceValue: {
+        color: string;
+        fontSize: number;
+        fontWeight: "700";
+        textAlign: "right";
+        flex: number;
+    };
+    deviceSectionTitle: {
+        color: string;
+        fontSize: number;
+        fontWeight: "900";
+        letterSpacing: number;
+        marginBottom: number;
+        marginTop: number;
     };
 };
 export default styleSheet;
