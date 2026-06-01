@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org/
+
+      - run: npm install
+
+      - name: Bump version and create tag
+        id: version
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          npm version patch -m "chore: bump to %s [skip ci]"
+          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Push commit and tag to master
+        run: git push origin master --follow-tags
+
+      - name: Publish to npm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ steps.version.outputs.version }}
+          generateReleaseNotes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
