@@ -1,4 +1,4 @@
-# @mspvirajpatel/react-native-network-monitor
+# React Native Network Monitor
 
 A polished in-app debug monitor for React Native apps.
 
@@ -49,29 +49,27 @@ Use it to capture network traffic, console logs, WebSocket messages, FPS perform
 - 📐 Safe area aware — respects device notch, rounded corners, home indicator
 - ↔️ Configurable screen edge margin for floating button
 
+---
+
 ## Install
 
 ```bash
-npm install @mspvirajpatel/react-native-network-monitor
+npm install @mspvirajpatel/react-native-network-monitor react-native-safe-area-context
 ```
 
 ```bash
-yarn add @mspvirajpatel/react-native-network-monitor
+yarn add @mspvirajpatel/react-native-network-monitor react-native-safe-area-context
 ```
 
-Also install the peer dependency:
-
-```bash
-npm install react-native-safe-area-context
-```
-
-Optional dependencies for file export:
+Optional export dependencies:
 
 ```bash
 npm install expo-file-system expo-sharing
 # or
 npm install react-native-fs
 ```
+
+---
 
 ## Quick Start
 
@@ -84,7 +82,7 @@ import { DebugTrigger } from '@mspvirajpatel/react-native-network-monitor';
 export default function App() {
   return (
     <DebugTrigger
-      password="2024"
+      password="2026"
       passwordFrequency="all-time"
       clicksNeeded={5}
       prodUrl="https://api.production.com"
@@ -96,23 +94,65 @@ export default function App() {
 }
 ```
 
-Tap the screen 5 times → enter the password → the debug monitor opens.
+Tap the screen 5 times, enter the password, and the debug monitor opens.
 
-## Example Usage
+---
 
-### Basic Setup
+## Primary API
+
+### `DebugTrigger`
+
+Use `DebugTrigger` to wrap your app and enable the debug monitor.
 
 ```tsx
 import { DebugTrigger } from '@mspvirajpatel/react-native-network-monitor';
-
-<DebugTrigger
-  password="1234"
-  clicksNeeded={5}
-  enabled={__DEV__}
->
-  <YourApp />
-</DebugTrigger>
 ```
+
+### `useDebugger`
+
+Use inside any component rendered within `<DebugTrigger>`.
+
+```tsx
+import { useDebugger } from '@mspvirajpatel/react-native-network-monitor';
+```
+
+### Performance helpers
+
+```tsx
+import {
+  startPerformanceMonitor,
+  stopPerformanceMonitor,
+  subscribeToFps,
+  isPerformanceMonitorRunning,
+} from '@mspvirajpatel/react-native-network-monitor';
+```
+
+---
+
+## Key Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `password` | `string` | Password required to open the debugger |
+| `passwordFrequency` | `'all-time' | 'per-install' | 'app-active'` | How often the password is requested |
+| `passwordOptional` | `boolean` | Skip the password modal while keeping a password configured |
+| `enableTapGesture` | `boolean` | Enable or disable the 5-tap open gesture |
+| `clicksNeeded` | `number` | Number of taps required to open the debugger |
+| `prodUrl` | `string` | Production base URL entry |
+| `testUrl` | `string` | Test base URL entry |
+| `baseUrls` | `string[]` or `{ title: string; url: string }[]` | Custom list of saved base URLs |
+| `onBaseUrlChange` | `(newUrl: string) => void` | Called when the user selects a new base URL |
+| `onEnvChange` | `(newEnv: 'demo' | 'prod') => void` | Called when demo/prod mode changes |
+| `enabled` | `boolean` | Enable or disable the monitor |
+| `isDemo` | `boolean` | Enable demo mode |
+| `floatingButtonMargin` | `number` | Extra screen edge padding for the floating button |
+| `checkAccess` | `() => boolean | Promise<boolean>` | Custom guard for opening the debugger |
+| `language` | `'az' | 'en' | 'ru' | 'tr' | 'auto'` | UI language selection |
+| `theme` | `'light' | 'dark' | 'auto'` | Force light/dark mode or follow system |
+
+---
+
+## Examples
 
 ### Environment Switching
 
@@ -122,125 +162,59 @@ import { DebugTrigger } from '@mspvirajpatel/react-native-network-monitor';
   testUrl="https://api.qa.com"
   baseUrls={[
     { title: 'Local', url: 'http://localhost:3000' },
-    { title: 'QA', url: 'https://api.qa.com' }
+    { title: 'QA', url: 'https://api.qa.com' },
   ]}
   onBaseUrlChange={(url) => console.log('Switched to', url)}
 >
-```
-
-### Password Protection
-
-```tsx
-<DebugTrigger
-  password="secure123"
-  passwordFrequency="per-install"
->
-```
-
-- `all-time` — ask every time
-- `per-install` — ask once per install
-- `app-active` — ask once per session
-
-### Skip Password (Optional Auth)
-
-When `passwordOptional` is `true`, the password modal is skipped entirely and the debugger opens directly — useful for dev builds where you want fast access but still define a password for release:
-
-```tsx
-<DebugTrigger
-  password="2026"
-  passwordOptional     // bypass password modal
->
-```
-
-The password is still defined (for release builds), but in dev you skip the prompt.
-
-### Floating Button
-
-The floating DEBUG button appears when the debugger has been opened at least once. It is:
-
-- **Draggable** — drag it anywhere on screen
-- **Snaps to edge** — releases to the nearest left/right edge with spring animation
-- **Auto-hides** — fades after 8 seconds of inactivity; tap to restore
-- **Safe area aware** — respects device notch, rounded corners, home indicator via `react-native-safe-area-context`
-- **Position persisted** — position is saved to storage and restored across sessions
-- **Position preserved** — position is saved before password modal opens and restored on dismiss
-
-Customize the edge margin with the `floatingButtonMargin` prop:
-
-```tsx
-<DebugTrigger
-  password="2026"
-  floatingButtonMargin={24}   // default 16
->
-```
-
-Long-press the floating button to hide it permanently. Re-trigger via 5 taps or `useDebugger().openDebugger()`.
-
-### Floating Button Safe Area & Edge Margin
-
-The floating button uses `react-native-safe-area-context` to automatically stay clear of:
-
-- Status bar (top inset)
-- Notch / Dynamic Island (top + left/right insets)
-- Home indicator (bottom inset)
-- Rounded corners (all edges)
-
-On top of safe area insets, the `floatingButtonMargin` prop adds extra padding from all screen edges (default `16`).
-
-### Disable Tap Gesture (use programmatic open only)
-
-```tsx
-<DebugTrigger
-  password="2026"
-  enableTapGesture={false}   // 5-tap gesture disabled
->
-  <YourApp />
+  <App />
 </DebugTrigger>
 ```
 
-The debugger can then only be opened programmatically via `useDebugger()`.
-
-## Programmatic Open / Close
-
-Use the `useDebugger()` hook inside any component rendered within `<DebugTrigger>`:
+### Open Programmatically
 
 ```tsx
 import { useDebugger } from '@mspvirajpatel/react-native-network-monitor';
 
-function SettingsScreen() {
+function Settings() {
   const { openDebugger, closeDebugger, isDebuggerOpen } = useDebugger();
 
   return (
     <View>
       <Button title="Open Debugger" onPress={openDebugger} />
-      <Button title="Close Debugger" onPress={closeDebugger} />
       <Text>Debugger is {isDebuggerOpen ? 'open' : 'closed'}</Text>
     </View>
   );
 }
 ```
 
-The same password/access checks apply as the tap gesture.
-
-## WebSocket Monitoring
-
-WebSocket connections are automatically intercepted — no extra setup needed.
+### Optional Quick Access
 
 ```tsx
-const ws = new WebSocket('wss://echo.example.com');
-ws.onopen = () => ws.send(JSON.stringify({ message: 'Hello' }));
-ws.onmessage = (event) => console.log('Received:', event.data);
-ws.onerror = (err) => console.error('WS error', err);
-ws.onclose = () => console.log('WS closed');
+<DebugTrigger
+  password="2026"
+  passwordOptional
+  enableTapGesture={true}
+>
+  <App />
+</DebugTrigger>
 ```
 
-All WebSocket events appear in the **WS** tab of the debug monitor with open/close/error/msg badges.
+### Disable Tap Gesture
 
-## FPS Performance Monitor
+```tsx
+<DebugTrigger
+  password="2026"
+  enableTapGesture={false}
+>
+  <App />
+</DebugTrigger>
+```
 
-Real-time FPS tracking with toggle, average/min/max stats, dropped frame count, and a mini history chart.
+The debugger remains available through `useDebugger()` only.
 
-### Control programmatically:
+---
+
+## FPS Monitor
 
 ```tsx
 import {
@@ -255,327 +229,19 @@ stopPerformanceMonitor();
 const running = isPerformanceMonitorRunning();
 
 subscribeToFps((stats) => {
-  console.log(stats.fps, stats.averageFps, stats.minFps, stats.maxFps, stats.droppedFrames);
+  console.log(stats);
 });
 ```
 
-The FPS monitor has a built-in threshold check — when FPS drops below 30, a `performance` type log entry is automatically created.
+---
 
-## Error Boundary & Global Error Capture
+## Notes
 
-### ErrorBoundary component
+- Requires `react-native-safe-area-context`
+- Supports React Native `>=0.60.0`
+- Works with Expo when optional export dependencies are installed
 
-Catches React render errors and prevents the app from crashing:
-
-```tsx
-import { ErrorBoundary } from '@mspvirajpatel/react-native-network-monitor';
-
-<ErrorBoundary>
-  <YourApp />
-</ErrorBoundary>
-```
-
-Render errors are logged to the debug monitor's LOGS tab.
-
-### Global error handlers
-
-`setupGlobalErrorHandlers()` is automatically called by `DebugTrigger`. It captures:
-- Critical JS errors via `ErrorUtils.setGlobalHandler`
-- Unhandled promise rejections
-- Global `window.onerror` events
-
-## Device Info Panel
-
-The Settings tab in the debug monitor shows device information:
-- Platform and OS version
-- Device model name
-- Screen resolution and scale
-- App version and build version
-
-You can also access this programmatically:
-
-```tsx
-import { getDeviceInfo } from '@mspvirajpatel/react-native-network-monitor';
-
-const info = getDeviceInfo();
-console.log(info.platform, info.osVersion, info.deviceName);
-```
-
-## Log Persistence
-
-Logs are automatically saved to storage every 15 seconds and restored on app restart.
-
-### Control persistence:
-
-```tsx
-import {
-  startPersistence,
-  stopPersistence,
-  restoreLogs,
-  clearPersistedLogs,
-} from '@mspvirajpatel/react-native-network-monitor';
-
-startPersistence(intervalMs);
-stopPersistence();
-clearPersistedLogs();
-```
-
-Up to 200 of the most recent log entries are persisted.
-
-## Export Report
-
-Generate comprehensive debug reports with summary statistics:
-
-```tsx
-import {
-  generateExportReport,
-  formatReportAsText,
-} from '@mspvirajpatel/react-native-network-monitor';
-import { Logger } from '@mspvirajpatel/react-native-network-monitor';
-
-const logs = Logger.getLogs();
-const report = generateExportReport(logs);
-const text = formatReportAsText(report);
-
-// Share
-await Share.share({ message: text });
-```
-
-The report includes:
-- App/device info
-- Summary statistics (total requests, errors, avg duration)
-- Network breakdown by method and status code
-- Top 10 slowest requests
-- Complete error list
-- Timeline sorted by timestamp
-
-## File Exporter
-
-Save reports to the device filesystem with automatic fallback chain:
-
-```tsx
-import {
-  saveReportToJson,
-  saveReportToText,
-} from '@mspvirajpatel/react-native-network-monitor';
-import { Logger } from '@mspvirajpatel/react-native-network-monitor';
-
-const logs = Logger.getLogs();
-await saveReportToJson(logs);  // saves report.json
-await saveReportToText(logs);  // saves report.txt
-```
-
-Fallback priority: `expo-file-system` → `react-native-fs` → Share API.
-
-## Custom Storage Adapter
-
-```tsx
-import { setStorageAdapter } from '@mspvirajpatel/react-native-network-monitor';
-import { MMKV } from 'react-native-mmkv';
-
-const mmkv = new MMKV();
-
-setStorageAdapter({
-  get: (key, defaultValue) => {
-    const value = mmkv.getString(key);
-    return value !== undefined ? JSON.parse(value) : defaultValue;
-  },
-  set: (key, value) => {
-    mmkv.set(key, JSON.stringify(value));
-  },
-});
-```
-
-## Logger API
-
-```tsx
-import { Logger } from 'react-native-network-monitor';
-
-// Get all logs
-const logs = Logger.getLogs();
-
-// Subscribe to log updates
-const unsubscribe = Logger.subscribe((logs) => {
-  console.log('New logs:', logs);
-});
-
-// Clear logs
-Logger.clearLogs();
-
-// Log custom events
-Logger.logInfo('Custom event', { data: 'value' });
-Logger.logDatabase('SELECT * FROM users', { results: 42 });
-Logger.logNavigation('/home', { from: 'login' });
-Logger.logInfo('Analytics event', { event: 'purchase', amount: 29.99 });
-```
-
-## API Reference
-
-### DebugTrigger Props
-
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `children` | `ReactNode` | - | App content to wrap |
-| `password` | `string` | `'2024'` | Password to access debug monitor |
-| `passwordFrequency` | `'all-time' \| 'per-install' \| 'app-active'` | `'all-time'` | When to ask for password |
-| `passwordOptional` | `boolean` | `false` | Skip the password modal entirely and open directly |
-| `enableShake` | `boolean` | `false` | Enable shake gesture to open (not yet implemented) |
-| `clicksNeeded` | `number` | `5` | Number of clicks to trigger monitor |
-| `isDemo` | `boolean` | `false` | Start in demo mode |
-| `onEnvChange` | `(newEnv: 'demo' \| 'prod') => void` | - | Callback when environment changes |
-| `onBaseUrlChange` | `(newUrl: string) => void` | - | Callback when base URL changes |
-| `baseUrls` | `string[] \| { title: string; url: string }[]` | - | Predefined base URLs for quick switching |
-| `prodUrl` | `string` | - | Production API URL |
-| `testUrl` | `string` | - | Test/Staging API URL |
-| `enabled` | `boolean` | `true` | Enable/disable the tap trigger |
-| `enableTapGesture` | `boolean` | `true` | Enable/disable the multi-tap gesture. Set to `false` to only allow programmatic open via `useDebugger()` |
-| `floatingButtonMargin` | `number` | `16` | Minimum distance (px) from all screen edges for the floating button, on top of safe area insets |
-| `checkAccess` | `() => boolean \| Promise<boolean>` | - | Custom access check function |
-| `language` | `'az' \| 'en' \| 'ru' \| 'tr' \| 'auto'` | `'auto'` | UI language |
-| `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Color theme; `'auto'` follows the device setting |
-
-### useDebugger Hook
-
-```typescript
-interface DebugContextValue {
-  openDebugger: () => void;
-  closeDebugger: () => void;
-  isDebuggerOpen: boolean;
-}
-
-const { openDebugger, closeDebugger, isDebuggerOpen } = useDebugger();
-```
-
-| Method | Description |
-|--------|-------------|
-| `openDebugger()` | Opens the debug monitor (respects password/access checks) |
-| `closeDebugger()` | Closes the debug monitor and hides the floating button |
-| `isDebuggerOpen` | `boolean` — whether the debug monitor is currently visible |
-
-### Logger API
-
-```typescript
-class DebugLogger {
-  getLogs(): LogEntry[];
-  clearLogs(): void;
-
-  setBaseUrl(url: string): void;
-  getBaseUrl(): string;
-
-  subscribe(listener: (logs: LogEntry[]) => void): () => void;
-
-  logInfo(message: string, data?: any): void;
-  logDatabase(query: string, data?: any): void;
-  logNavigation(route: string, params?: any): void;
-
-  addCustomUrl(entry: CustomUrlEntry): void;
-  removeCustomUrl(url: string): void;
-  getCustomUrls(): CustomUrlEntry[];
-}
-```
-
-### Performance Monitor API
-
-```typescript
-startPerformanceMonitor(): void;
-stopPerformanceMonitor(): void;
-isPerformanceMonitorRunning(): boolean;
-
-subscribeToFps(listener: (stats: FpsStats) => void): () => void;
-
-interface FpsStats {
-  fps: number;
-  averageFps: number;
-  minFps: number;
-  maxFps: number;
-  droppedFrames: number;
-}
-```
-
-### Export Report API
-
-```typescript
-generateExportReport(logs: LogEntry[]): ExportReport;
-formatReportAsText(report: ExportReport): string;
-
-saveReportToJson(logs: LogEntry[]): Promise<void>;
-saveReportToText(logs: LogEntry[]): Promise<void>;
-
-interface ExportReport {
-  generatedAt: string;
-  appInfo: { platform: string; osVersion: string; deviceName: string; ... };
-  summary: { totalRequests: number; totalErrors: number; ... };
-  networkBreakdown: { byMethod: Record<string, number>; byStatus: Record<string, number> };
-  slowestRequests: LogEntry[];
-  errors: LogEntry[];
-  timeline: LogEntry[];
-}
-```
-
-### Types
-
-```typescript
-type LogType = 'request' | 'response' | 'error' | 'info' | 'database' | 'navigation' | 'websocket' | 'performance';
-
-interface LogEntry {
-  id: string;
-  type: LogType;
-  timestamp: string;
-  url?: string;
-  originalUrl?: string;
-  isRedirected?: boolean;
-  method?: string;
-  requestData?: any;
-  responseData?: any;
-  requestHeaders?: any;
-  responseHeaders?: any;
-  status?: number;
-  message?: string;
-  durationMs?: number;
-  size?: string;
-}
-
-interface CustomUrlEntry {
-  title: string;
-  url: string;
-}
-
-interface StorageAdapter {
-  get<T = any>(key: string, defaultValue: T): T;
-  set(key: string, value: any): void;
-}
-
-interface DeviceInfoData {
-  platform: string;
-  osVersion: string;
-  deviceName: string;
-  screenWidth: number;
-  screenHeight: number;
-  screenScale: number;
-  appVersion?: string;
-  buildVersion?: string;
-}
-```
-
-## Examples
-
-See the `examples/` folder for working demos.
-
-- `examples/expo-go` — Expo Go managed example demonstrating all features
-
-## Development
-
-Build the package with:
-
-```bash
-npm run build
-```
-
-This produces output under `lib/` and `typescript/`.
-
-## Contributing
-
-Contributions are welcome! Open an issue or submit a PR on GitHub.
+---
 
 ## License
 

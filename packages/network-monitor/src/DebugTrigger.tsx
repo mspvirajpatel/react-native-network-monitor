@@ -389,8 +389,10 @@ export const DebugTrigger = ({
 
   const BTN_STORAGE_KEY = "networkMonitorBtnPos";
   const { width: initW, height: initH } = Dimensions.get("window");
-  const initX = Math.min(initW - 80 - insets.right, Math.max(safeM.left, initW - 80 - insets.right));
-  const initY = Math.min(initH * 0.5, Math.max(60 + insets.top, initH * 0.5));
+  const initBtnW = 60;
+  const initBtnH = 40;
+  const initX = Math.max(safeM.left, Math.min(initW - initBtnW - safeM.x, initW - 80 - insets.right));
+  const initY = Math.max(safeM.top, Math.min(initH - initBtnH - safeM.y, initH * 0.5));
   const btnX = useRef(new Animated.Value(initX)).current;
   const btnY = useRef(new Animated.Value(initY)).current;
   const [btnSize, setBtnSize] = useState({ w: 60, h: 40 });

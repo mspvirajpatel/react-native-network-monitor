@@ -18,44 +18,40 @@ export const setupWebSocketMonitor = () => {
       ? new WS(url, protocols)
       : new WS(url);
 
-    const origOnOpen = instance.onopen;
-    const origOnMessage = instance.onmessage;
-    const origOnClose = instance.onclose;
-    const origOnError = instance.onerror;
-
-    instance.onopen = function (...args: any[]) {
-      Logger.logWebSocket({ url: urlStr, event: 'open', message: 'Connection opened' });
-      if (origOnOpen) origOnOpen.apply(instance, args);
-    };
-
-    instance.onmessage = function (event: any) {
-      let data = event.data;
-      if (typeof data === 'string') {
-        try { data = JSON.parse(data); } catch (_) {}
-      }
-      Logger.logWebSocket({
-        url: urlStr,
-        event: 'message',
-        data,
-        message: typeof data === 'string' ? data.substring(0, 200) : 'Message received',
+    try {
+      instance.addEventListener?.('open', () => {
+        Logger.logWebSocket({ url: urlStr, event: 'open', message: 'Connection opened' });
       });
-      if (origOnMessage) origOnMessage.call(instance, event);
-    };
-
-    instance.onclose = function (event: any) {
-      Logger.logWebSocket({
-        url: urlStr,
-        event: 'close',
-        message: `Code: ${event.code}${event.reason ? `, Reason: ${event.reason}` : ''}`,
-        status: event.code,
+    } catch (_) {}
+    try {
+      instance.addEventListener?.('message', (event: any) => {
+        let data = event?.data;
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data); } catch (_) {}
+        }
+        Logger.logWebSocket({
+          url: urlStr,
+          event: 'message',
+          data,
+          message: typeof data === 'string' ? data.substring(0, 200) : 'Message received',
+        });
       });
-      if (origOnClose) origOnClose.call(instance, event);
-    };
-
-    instance.onerror = function (...args: any[]) {
-      Logger.logWebSocket({ url: urlStr, event: 'error', message: 'WebSocket error' });
-      if (origOnError) origOnError.apply(instance, args);
-    };
+    } catch (_) {}
+    try {
+      instance.addEventListener?.('close', (event: any) => {
+        Logger.logWebSocket({
+          url: urlStr,
+          event: 'close',
+          message: `Code: ${event?.code}${event?.reason ? `, Reason: ${event.reason}` : ''}`,
+          status: event?.code,
+        });
+      });
+    } catch (_) {}
+    try {
+      instance.addEventListener?.('error', () => {
+        Logger.logWebSocket({ url: urlStr, event: 'error', message: 'WebSocket error' });
+      });
+    } catch (_) {}
 
     return instance;
   } as any;

@@ -8,50 +8,50 @@ export const setupWebSocketMonitor = () => {
   const PatchedWebSocket = function (url, protocols) {
     const urlStr = typeof url === 'string' ? url : url.toString();
     const instance = typeof protocols !== 'undefined' ? new WS(url, protocols) : new WS(url);
-    const origOnOpen = instance.onopen;
-    const origOnMessage = instance.onmessage;
-    const origOnClose = instance.onclose;
-    const origOnError = instance.onerror;
-    instance.onopen = function (...args) {
-      Logger.logWebSocket({
-        url: urlStr,
-        event: 'open',
-        message: 'Connection opened'
+    try {
+      instance.addEventListener?.('open', () => {
+        Logger.logWebSocket({
+          url: urlStr,
+          event: 'open',
+          message: 'Connection opened'
+        });
       });
-      if (origOnOpen) origOnOpen.apply(instance, args);
-    };
-    instance.onmessage = function (event) {
-      let data = event.data;
-      if (typeof data === 'string') {
-        try {
-          data = JSON.parse(data);
-        } catch (_) {}
-      }
-      Logger.logWebSocket({
-        url: urlStr,
-        event: 'message',
-        data,
-        message: typeof data === 'string' ? data.substring(0, 200) : 'Message received'
+    } catch (_) {}
+    try {
+      instance.addEventListener?.('message', event => {
+        let data = event?.data;
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch (_) {}
+        }
+        Logger.logWebSocket({
+          url: urlStr,
+          event: 'message',
+          data,
+          message: typeof data === 'string' ? data.substring(0, 200) : 'Message received'
+        });
       });
-      if (origOnMessage) origOnMessage.call(instance, event);
-    };
-    instance.onclose = function (event) {
-      Logger.logWebSocket({
-        url: urlStr,
-        event: 'close',
-        message: `Code: ${event.code}${event.reason ? `, Reason: ${event.reason}` : ''}`,
-        status: event.code
+    } catch (_) {}
+    try {
+      instance.addEventListener?.('close', event => {
+        Logger.logWebSocket({
+          url: urlStr,
+          event: 'close',
+          message: `Code: ${event?.code}${event?.reason ? `, Reason: ${event.reason}` : ''}`,
+          status: event?.code
+        });
       });
-      if (origOnClose) origOnClose.call(instance, event);
-    };
-    instance.onerror = function (...args) {
-      Logger.logWebSocket({
-        url: urlStr,
-        event: 'error',
-        message: 'WebSocket error'
+    } catch (_) {}
+    try {
+      instance.addEventListener?.('error', () => {
+        Logger.logWebSocket({
+          url: urlStr,
+          event: 'error',
+          message: 'WebSocket error'
+        });
       });
-      if (origOnError) origOnError.apply(instance, args);
-    };
+    } catch (_) {}
     return instance;
   };
   PatchedWebSocket.prototype = WS.prototype;
