@@ -67,7 +67,13 @@ const LIGHT_COLORS = exports.LIGHT_COLORS = {
   tabActive: '#6C5CE7',
   tabInactive: '#9A9AB0'
 };
-const getColors = theme => theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+const getColors = (theme, overrides) => {
+  const base = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+  return overrides ? {
+    ...base,
+    ...overrides
+  } : base;
+};
 exports.getColors = getColors;
 const COLORS = exports.COLORS = DARK_COLORS;
 const FONT = _reactNative.Platform.OS === 'ios' ? 'Menlo' : 'monospace';

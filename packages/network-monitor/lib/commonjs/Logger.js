@@ -334,6 +334,19 @@ class DebugLogger {
     });
     this.notify();
   }
+  logAction(data) {
+    this.logs.unshift({
+      id: Math.random().toString(36).substring(7),
+      type: 'action',
+      timestamp: new Date().toISOString(),
+      message: data.actionType || `[${data.storeName}] State Change`,
+      stateData: data
+    });
+    if (this.logs.length > 500) {
+      this.logs.pop();
+    }
+    this.notify();
+  }
   logPerformance(data) {
     this.logs.unshift({
       id: Math.random().toString(36).substring(7),

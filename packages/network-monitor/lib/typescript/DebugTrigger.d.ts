@@ -1,4 +1,6 @@
 import React, { ReactNode } from "react";
+import { type ThemeColors } from "./DebugMonitorStyles";
+import { type LanguageCode } from "./translations";
 export interface DebugTriggerProps {
     children?: ReactNode;
     password?: string;
@@ -19,8 +21,12 @@ export interface DebugTriggerProps {
     enableTapGesture?: boolean;
     floatingButtonMargin?: number;
     checkAccess?: () => boolean | Promise<boolean>;
-    language?: "az" | "en" | "ru" | "tr" | "auto";
+    language?: LanguageCode;
     theme?: "light" | "dark" | "auto";
+    colors?: Partial<ThemeColors>;
+    onOpen?: () => void;
+    onClose?: () => void;
+    floatingButtonContent?: ReactNode;
 }
 /**
  * DebugTrigger
@@ -41,8 +47,8 @@ export interface DebugTriggerProps {
  * @param testUrl - Test base URL
  * @param enabled - Whether the trigger is enabled
  * @param checkAccess - Optional function to perform additional access checks before showing the monitor
- * @param language - Language for the monitor UI ('az', 'en', 'ru', 'tr', or 'auto' to detect from device)
+ * @param language - Language for the monitor UI (use 'auto' to detect from device)
  * @returns The wrapped children and the debug monitor when triggered
  */
-export declare const DebugTrigger: ({ children, password, passwordFrequency, passwordOptional, enableShake, clicksNeeded, isDemo, onEnvChange, onBaseUrlChange, baseUrls, prodUrl, testUrl, enabled, enableTapGesture, floatingButtonMargin, checkAccess, language, theme, }: DebugTriggerProps) => React.JSX.Element;
+export declare const DebugTrigger: ({ children, password, passwordFrequency, passwordOptional, enableShake, clicksNeeded, isDemo, onEnvChange, onBaseUrlChange, baseUrls, prodUrl, testUrl, enabled, enableTapGesture, floatingButtonMargin, checkAccess, language, theme, colors: customColors, onOpen, onClose: onCloseProp, floatingButtonContent, }: DebugTriggerProps) => React.JSX.Element;
 //# sourceMappingURL=DebugTrigger.d.ts.map

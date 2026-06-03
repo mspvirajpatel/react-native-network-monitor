@@ -3,7 +3,7 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useRef, useEffect } from "react";
-import { TouchableOpacity, Modal, View, Text, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, NativeModules, Animated, PanResponder, Dimensions, useColorScheme } from "react-native";
+import { TouchableOpacity, Modal, View, Text, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Animated, PanResponder, Dimensions, useColorScheme } from "react-native";
 import { getStorageValue, setStorageValue } from "./storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { setupConsoleMonitor } from "./ConsoleMonitor";
@@ -15,44 +15,7 @@ import { setupWebSocketMonitor } from "./WebSocketMonitor";
 import { startPerformanceMonitor } from "./PerformanceMonitor";
 import { ErrorBoundary, setupGlobalErrorHandlers } from "./ErrorBoundary";
 import { startPersistence, restoreLogs } from "./PersistenceManager";
-const TRANSLATIONS = {
-  az: {
-    login: "Debug Girişi",
-    clicks: n => `Ardıcıl ${n} klik aşkar edildi`,
-    passPlaceholder: "Şifrəni daxil edin",
-    cancel: "Ləğv et",
-    confirm: "Təsdiqlə",
-    error: "Xəta",
-    wrongPass: "Şifrə yanlışdır"
-  },
-  en: {
-    login: "Debug Login",
-    clicks: n => `${n} clicks detected`,
-    passPlaceholder: "Enter password",
-    cancel: "Cancel",
-    confirm: "Confirm",
-    error: "Error",
-    wrongPass: "Wrong password"
-  },
-  ru: {
-    login: "Вход",
-    clicks: n => `Обнаружено ${n} кликов`,
-    passPlaceholder: "Введите пароль",
-    cancel: "Отмена",
-    confirm: "Ок",
-    error: "Ошибка",
-    wrongPass: "Неверный пароль"
-  },
-  tr: {
-    login: "Giriş",
-    clicks: n => `${n} tıklama tespit edildi`,
-    passPlaceholder: "Şifreyi giriniz",
-    cancel: "İptal",
-    confirm: "Onayla",
-    error: "Hata",
-    wrongPass: "Yanlış şifre"
-  }
-};
+import { TRANSLATIONS, resolveLanguage } from "./translations";
 const COLORS = {
   background: "#0F172A",
   surface: "#1E293B",
@@ -151,22 +114,6 @@ const styles = StyleSheet.create({
     textAlign: "center"
   }
 });
-
-/**
- * getDeviceLanguage
- * Attempts to determine the device's current language setting, with fallbacks and error handling.
- * @returns A string representing the device's language, defaulting to 'en' if it cannot be determined or is unsupported.
- */
-const getDeviceLanguage = () => {
-  try {
-    const locale = Platform.OS === "ios" ? NativeModules.SettingsManager?.settings?.AppleLocale || NativeModules.SettingsManager?.settings?.AppleLanguages?.[0] : NativeModules.I18nManager?.localeIdentifier;
-    const lang = locale?.split(/[-_]/)[0] || "en";
-    if (TRANSLATIONS[lang]) return lang;
-  } catch (e) {
-    console.warn("Error getting device language, defaulting to English:", e);
-  }
-  return "en";
-};
 let isAppActiveAuthenticated = false;
 
 /**
@@ -188,7 +135,7 @@ let isAppActiveAuthenticated = false;
  * @param testUrl - Test base URL
  * @param enabled - Whether the trigger is enabled
  * @param checkAccess - Optional function to perform additional access checks before showing the monitor
- * @param language - Language for the monitor UI ('az', 'en', 'ru', 'tr', or 'auto' to detect from device)
+ * @param language - Language for the monitor UI (use 'auto' to detect from device)
  * @returns The wrapped children and the debug monitor when triggered
  */
 export const DebugTrigger = ({
@@ -209,7 +156,11 @@ export const DebugTrigger = ({
   floatingButtonMargin = 16,
   checkAccess,
   language = "auto",
-  theme = "auto"
+  theme = "auto",
+  colors: customColors,
+  onOpen,
+  onClose: onCloseProp,
+  floatingButtonContent
 }) => {
   const systemScheme = useColorScheme();
   const insets = useSafeAreaInsets();
@@ -227,8 +178,15 @@ export const DebugTrigger = ({
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const [inputPassword, setInputPassword] = useState("");
   const timerRef = useRef(null);
-  const activeLang = language === "auto" ? getDeviceLanguage() : language;
+  const activeLang = resolveLanguage(language);
   const t = TRANSLATIONS[activeLang] || TRANSLATIONS.en;
+  const prevShowMonitor = useRef(false);
+  useEffect(() => {
+    if (showMonitor && !prevShowMonitor.current) {
+      onOpen?.();
+    }
+    prevShowMonitor.current = showMonitor;
+  }, [showMonitor, onOpen]);
   useEffect(() => {
     setupNetworkMonitor();
     setupConsoleMonitor();
@@ -553,7 +511,11 @@ export const DebugTrigger = ({
     testUrl: testUrl,
     language: language,
     theme: theme,
-    onClose: () => setShowMonitor(false),
+    colors: customColors,
+    onClose: () => {
+      setShowMonitor(false);
+      onCloseProp?.();
+    },
     onBaseUrlChange: onBaseUrlChange,
     onExitDebugMode: () => setShowFloatingButton(false)
   }))), /*#__PURE__*/React.createElement(Modal, {
@@ -645,8 +607,8 @@ export const DebugTrigger = ({
       w: e.nativeEvent.layout.width,
       h: e.nativeEvent.layout.height
     })
-  }, /*#__PURE__*/React.createElement(Text, {
+  }, floatingButtonContent || /*#__PURE__*/React.createElement(Text, {
     style: styles.floatingButtonText
-  }, "DEBUG")))));
+  }, t.debug)))));
 };
 //# sourceMappingURL=DebugTrigger.js.map

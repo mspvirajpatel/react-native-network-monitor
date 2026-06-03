@@ -61,7 +61,13 @@ export const LIGHT_COLORS = {
   tabActive: '#6C5CE7',
   tabInactive: '#9A9AB0'
 };
-export const getColors = theme => theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+export const getColors = (theme, overrides) => {
+  const base = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+  return overrides ? {
+    ...base,
+    ...overrides
+  } : base;
+};
 export const COLORS = DARK_COLORS;
 const FONT = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 const styleSheet = (C = DARK_COLORS) => StyleSheet.create({

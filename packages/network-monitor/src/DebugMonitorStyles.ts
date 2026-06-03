@@ -96,8 +96,10 @@ export const LIGHT_COLORS: ThemeColors = {
   tabInactive: '#9A9AB0',
 };
 
-export const getColors = (theme: 'dark' | 'light'): ThemeColors =>
-  theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+export const getColors = (theme: 'dark' | 'light', overrides?: Partial<ThemeColors>): ThemeColors => {
+  const base = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+  return overrides ? { ...base, ...overrides } : base;
+};
 
 export const COLORS = DARK_COLORS;
 

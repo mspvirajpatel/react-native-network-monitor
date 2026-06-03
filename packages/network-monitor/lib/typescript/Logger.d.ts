@@ -1,4 +1,14 @@
-export type LogType = 'request' | 'response' | 'error' | 'info' | 'database' | 'navigation' | 'websocket' | 'performance';
+export type LogType = 'request' | 'response' | 'error' | 'info' | 'database' | 'navigation' | 'websocket' | 'performance' | 'action';
+export interface StateActionData {
+    storeName: string;
+    actionType?: string;
+    actionPayload?: any;
+    diff?: Record<string, {
+        prev: any;
+        next: any;
+    }>;
+    snapshot?: any;
+}
 export interface LogEntry {
     id: string;
     type: LogType;
@@ -16,6 +26,7 @@ export interface LogEntry {
     message?: string;
     durationMs?: number;
     size?: string;
+    stateData?: StateActionData;
 }
 export interface CustomUrlEntry {
     title: string;
@@ -187,6 +198,7 @@ declare class DebugLogger {
         data?: any;
         status?: number;
     }): void;
+    logAction(data: StateActionData): void;
     logPerformance(data: {
         fps: number;
         jsHeapSize?: number;

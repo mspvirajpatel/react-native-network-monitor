@@ -1,7 +1,7 @@
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, ReactNode, useRef, useEffect } from "react";
+import React, { useState, ReactNode, useRef, useCallback, useEffect, useMemo } from "react";
 import {
   TouchableOpacity,
   Modal,
@@ -14,7 +14,6 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
-  NativeModules,
   Animated,
   PanResponder,
   Dimensions,
@@ -31,6 +30,12 @@ import { setupWebSocketMonitor } from "./WebSocketMonitor";
 import { startPerformanceMonitor } from "./PerformanceMonitor";
 import { ErrorBoundary, setupGlobalErrorHandlers } from "./ErrorBoundary";
 import { startPersistence, restoreLogs } from "./PersistenceManager";
+import { getColors, type ThemeColors } from "./DebugMonitorStyles";
+import {
+  TRANSLATIONS,
+  resolveLanguage,
+  type LanguageCode,
+} from "./translations";
 
 export interface DebugTriggerProps {
   children?: ReactNode;
@@ -49,48 +54,13 @@ export interface DebugTriggerProps {
   enableTapGesture?: boolean;
   floatingButtonMargin?: number;
   checkAccess?: () => boolean | Promise<boolean>;
-  language?: "az" | "en" | "ru" | "tr" | "auto";
+  language?: LanguageCode;
   theme?: "light" | "dark" | "auto";
+  colors?: Partial<ThemeColors>;
+  onOpen?: () => void;
+  onClose?: () => void;
+  floatingButtonContent?: ReactNode;
 }
-
-const TRANSLATIONS: Record<string, any> = {
-  az: {
-    login: "Debug Girişi",
-    clicks: (n: number) => `Ardıcıl ${n} klik aşkar edildi`,
-    passPlaceholder: "Şifrəni daxil edin",
-    cancel: "Ləğv et",
-    confirm: "Təsdiqlə",
-    error: "Xəta",
-    wrongPass: "Şifrə yanlışdır",
-  },
-  en: {
-    login: "Debug Login",
-    clicks: (n: number) => `${n} clicks detected`,
-    passPlaceholder: "Enter password",
-    cancel: "Cancel",
-    confirm: "Confirm",
-    error: "Error",
-    wrongPass: "Wrong password",
-  },
-  ru: {
-    login: "Вход",
-    clicks: (n: number) => `Обнаружено ${n} кликов`,
-    passPlaceholder: "Введите пароль",
-    cancel: "Отмена",
-    confirm: "Ок",
-    error: "Ошибка",
-    wrongPass: "Неверный пароль",
-  },
-  tr: {
-    login: "Giriş",
-    clicks: (n: number) => `${n} tıklama tespit edildi`,
-    passPlaceholder: "Şifreyi giriniz",
-    cancel: "İptal",
-    confirm: "Onayla",
-    error: "Hata",
-    wrongPass: "Yanlış şifre",
-  },
-};
 
 const COLORS = {
   background: "#0F172A",
@@ -180,27 +150,6 @@ const styles = StyleSheet.create({
   },
 });
 
-/**
- * getDeviceLanguage
- * Attempts to determine the device's current language setting, with fallbacks and error handling.
- * @returns A string representing the device's language, defaulting to 'en' if it cannot be determined or is unsupported.
- */
-const getDeviceLanguage = (): string => {
-  try {
-    const locale =
-      Platform.OS === "ios"
-        ? NativeModules.SettingsManager?.settings?.AppleLocale ||
-          NativeModules.SettingsManager?.settings?.AppleLanguages?.[0]
-        : NativeModules.I18nManager?.localeIdentifier;
-
-    const lang = locale?.split(/[-_]/)[0] || "en";
-    if (TRANSLATIONS[lang]) return lang;
-  } catch (e) {
-    console.warn("Error getting device language, defaulting to English:", e);
-  }
-  return "en";
-};
-
 let isAppActiveAuthenticated = false;
 
 /**
@@ -222,7 +171,7 @@ let isAppActiveAuthenticated = false;
  * @param testUrl - Test base URL
  * @param enabled - Whether the trigger is enabled
  * @param checkAccess - Optional function to perform additional access checks before showing the monitor
- * @param language - Language for the monitor UI ('az', 'en', 'ru', 'tr', or 'auto' to detect from device)
+ * @param language - Language for the monitor UI (use 'auto' to detect from device)
  * @returns The wrapped children and the debug monitor when triggered
  */
 export const DebugTrigger = ({
@@ -244,6 +193,10 @@ export const DebugTrigger = ({
   checkAccess,
   language = "auto",
   theme = "auto",
+  colors: customColors,
+  onOpen,
+  onClose: onCloseProp,
+  floatingButtonContent,
 }: DebugTriggerProps) => {
   const systemScheme = useColorScheme();
   const insets = useSafeAreaInsets();
@@ -259,9 +212,16 @@ export const DebugTrigger = ({
   const [inputPassword, setInputPassword] = useState("");
   const timerRef = useRef<any>(null);
 
-  const activeLang = language === "auto" ? getDeviceLanguage() : language;
+  const activeLang = resolveLanguage(language);
   const t = TRANSLATIONS[activeLang] || TRANSLATIONS.en;
 
+  const prevShowMonitor = useRef(false);
+  useEffect(() => {
+    if (showMonitor && !prevShowMonitor.current) {
+      onOpen?.();
+    }
+    prevShowMonitor.current = showMonitor;
+  }, [showMonitor, onOpen]);
 
   useEffect(() => {
     setupNetworkMonitor();
@@ -557,7 +517,11 @@ export const DebugTrigger = ({
             testUrl={testUrl}
             language={language}
             theme={theme}
-            onClose={() => setShowMonitor(false)}
+            colors={customColors}
+            onClose={() => {
+              setShowMonitor(false);
+              onCloseProp?.();
+            }}
             onBaseUrlChange={onBaseUrlChange}
             onExitDebugMode={() => setShowFloatingButton(false)}
           />
@@ -651,7 +615,7 @@ export const DebugTrigger = ({
               h: e.nativeEvent.layout.height,
             })}
           >
-            <Text style={styles.floatingButtonText}>DEBUG</Text>
+            {floatingButtonContent || <Text style={styles.floatingButtonText}>{t.debug}</Text>}
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>

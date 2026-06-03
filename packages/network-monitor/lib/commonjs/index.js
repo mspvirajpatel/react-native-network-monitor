@@ -39,10 +39,40 @@ Object.defineProperty(exports, "Logger", {
     return _Logger.Logger;
   }
 });
+Object.defineProperty(exports, "RTL_LANGUAGES", {
+  enumerable: true,
+  get: function () {
+    return _translations.RTL_LANGUAGES;
+  }
+});
+Object.defineProperty(exports, "SUPPORTED_LANGUAGES", {
+  enumerable: true,
+  get: function () {
+    return _translations.SUPPORTED_LANGUAGES;
+  }
+});
+Object.defineProperty(exports, "TRANSLATIONS", {
+  enumerable: true,
+  get: function () {
+    return _translations.TRANSLATIONS;
+  }
+});
 Object.defineProperty(exports, "clearPersistedLogs", {
   enumerable: true,
   get: function () {
     return _PersistenceManager.clearPersistedLogs;
+  }
+});
+Object.defineProperty(exports, "createReduxMiddleware", {
+  enumerable: true,
+  get: function () {
+    return _StateMonitor.createReduxMiddleware;
+  }
+});
+Object.defineProperty(exports, "createZustandMonitor", {
+  enumerable: true,
+  get: function () {
+    return _StateMonitor.createZustandMonitor;
   }
 });
 Object.defineProperty(exports, "formatReportAsText", {
@@ -69,6 +99,12 @@ Object.defineProperty(exports, "getDeviceInfo", {
     return _DeviceInfo.getDeviceInfo;
   }
 });
+Object.defineProperty(exports, "getDeviceLanguage", {
+  enumerable: true,
+  get: function () {
+    return _translations.getDeviceLanguage;
+  }
+});
 Object.defineProperty(exports, "getRedirectedUrl", {
   enumerable: true,
   get: function () {
@@ -91,6 +127,12 @@ Object.defineProperty(exports, "isPerformanceMonitorRunning", {
   enumerable: true,
   get: function () {
     return _PerformanceMonitor.isPerformanceMonitorRunning;
+  }
+});
+Object.defineProperty(exports, "resolveLanguage", {
+  enumerable: true,
+  get: function () {
+    return _translations.resolveLanguage;
   }
 });
 Object.defineProperty(exports, "restoreLogs", {
@@ -177,6 +219,12 @@ Object.defineProperty(exports, "subscribeToFps", {
     return _PerformanceMonitor.subscribeToFps;
   }
 });
+Object.defineProperty(exports, "subscribeToState", {
+  enumerable: true,
+  get: function () {
+    return _StateMonitor.subscribeToState;
+  }
+});
 Object.defineProperty(exports, "useDebugger", {
   enumerable: true,
   get: function () {
@@ -196,6 +244,8 @@ var _Logger = require("./Logger");
 var _DebugMonitor = require("./DebugMonitor");
 var _DebugTrigger = require("./DebugTrigger");
 var _DebugContext = require("./DebugContext");
+var _translations = require("./translations");
+var _StateMonitor = require("./StateMonitor");
 var _storage = require("./storage");
 var _DebugMonitorStyles = require("./DebugMonitorStyles");
 //# sourceMappingURL=index.js.map

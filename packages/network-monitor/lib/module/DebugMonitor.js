@@ -2,7 +2,7 @@
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Share, Modal, Alert, TextInput, StatusBar, FlatList, Platform, NativeModules, useColorScheme } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Share, Modal, Alert, TextInput, StatusBar, FlatList, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styleSheet, { getColors } from './DebugMonitorStyles';
 import { Logger } from './Logger';
@@ -11,116 +11,7 @@ import { getDeviceInfo } from './DeviceInfo';
 import { generateExportReport, formatReportAsText } from './ExportReport';
 import { isInternalUrl } from './NetworkMonitor';
 import { saveReportToJson, saveReportToText } from './FileExporter';
-const TRANSLATIONS = {
-  az: {
-    title: 'Debug Monitor',
-    entries: 'qeyd',
-    search: 'Axtar...',
-    clear: 'Təmizlə',
-    all: 'Hamısı',
-    logs: 'Loglar',
-    network: 'Şəbəkə',
-    db: 'Baza',
-    nav: 'Nav',
-    settings: 'Ayarlar',
-    export: 'Export',
-    close: 'Bağla',
-    exit: 'Xitam',
-    back: 'Geri',
-    empty: 'Log tapılmadı',
-    request: 'Sorğu',
-    response: 'Cavab',
-    method: 'METOD',
-    url: 'URL',
-    headers: 'HEADERS',
-    status: 'STATUS KODU',
-    body: 'BODY',
-    customUrl: 'Fərdi URL',
-    selectUrl: 'MƏNBƏ SEÇİMİ',
-    manualUrl: 'ƏL İLƏ DAXİL ET'
-  },
-  en: {
-    title: 'Debug Monitor',
-    entries: 'entries',
-    search: 'Search...',
-    clear: 'Clear',
-    all: 'All',
-    logs: 'Logs',
-    network: 'Network',
-    db: 'DB',
-    nav: 'Nav',
-    settings: 'Settings',
-    export: 'Export',
-    close: 'Close',
-    exit: 'Exit',
-    back: 'Back',
-    empty: 'No logs found',
-    request: 'Request',
-    response: 'Response',
-    method: 'METHOD',
-    url: 'URL',
-    headers: 'HEADERS',
-    status: 'STATUS CODE',
-    body: 'BODY',
-    customUrl: 'Custom URL',
-    selectUrl: 'SELECT SOURCE',
-    manualUrl: 'MANUAL ENTRY'
-  },
-  tr: {
-    title: 'Debug Monitor',
-    entries: 'kayıt',
-    search: 'Ara...',
-    clear: 'Temizle',
-    all: 'Hepsi',
-    logs: 'Loglar',
-    network: 'Ağ',
-    db: 'Veri',
-    nav: 'Nav',
-    settings: 'Ayarlar',
-    export: 'Dışa Aktar',
-    close: 'Kapat',
-    exit: 'Çıkış',
-    back: 'Geri',
-    empty: 'Log bulunamadı',
-    request: 'Sorgu',
-    response: 'Yanıt',
-    method: 'METOD',
-    url: 'URL',
-    headers: 'HEADERS',
-    status: 'DURUM KODU',
-    body: 'BODY',
-    customUrl: 'Özel URL',
-    selectUrl: 'KAYNAK SEÇ',
-    manualUrl: 'MANUEL GİRİŞ'
-  },
-  ru: {
-    title: 'Дебаг Монитор',
-    entries: 'записей',
-    search: 'Поиск...',
-    clear: 'Очистить',
-    all: 'Все',
-    logs: 'Логи',
-    network: 'Сеть',
-    db: 'База',
-    nav: 'Нав',
-    settings: 'Настройки',
-    export: 'Экспорт',
-    close: 'Закрыть',
-    exit: 'Выход',
-    back: 'Назад',
-    empty: 'Логи не найдены',
-    request: 'Запрос',
-    response: 'Ответ',
-    method: 'МЕТОД',
-    url: 'URL',
-    headers: 'HEADERS',
-    status: 'КОД СТАТУСА',
-    body: 'ТЕЛО',
-    customUrl: 'Пользовательский URL',
-    selectUrl: 'ВЫБОР ИСТОЧНИКА',
-    manualUrl: 'РУЧНОЙ ВВОД'
-  }
-};
+import { TRANSLATIONS, resolveLanguage } from './translations';
 /**
  * Section
  *
@@ -195,11 +86,17 @@ export const DebugMonitor = ({
   prodUrl,
   testUrl,
   language = 'auto',
-  theme = 'auto'
+  theme = 'auto',
+  colors: customColors,
+  tabs: customTabs,
+  headerTitle,
+  searchPlaceholder,
+  maxLogs,
+  customActions
 }) => {
   const systemScheme = useColorScheme();
   const effectiveTheme = theme === 'auto' ? systemScheme === 'light' ? 'light' : 'dark' : theme;
-  const C = getColors(effectiveTheme);
+  const C = getColors(effectiveTheme, customColors);
   const styles = styleSheet(C);
   const [logs, setLogs] = useState(Logger.getLogs());
   const [selectedLog, setSelectedLog] = useState(null);
@@ -215,6 +112,12 @@ export const DebugMonitor = ({
   const [fpsStats, setFpsStats] = useState(null);
   const [perfRunning, setPerfRunning] = useState(isPerformanceMonitorRunning());
   const [deviceInfo] = useState(getDeviceInfo());
+  const availableTabs = customTabs || ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'];
+  useEffect(() => {
+    if (!availableTabs.includes(activeTab)) {
+      setActiveTab(availableTabs[0] || 'ALL');
+    }
+  }, [availableTabs, activeTab]);
   useEffect(() => {
     const unsubscribe = Logger.subscribe(newLogs => {
       setLogs(newLogs);
@@ -228,15 +131,7 @@ export const DebugMonitor = ({
     return unsubFps;
   }, []);
   const t = useMemo(() => {
-    let lang = language;
-    if (lang === 'auto') {
-      try {
-        const locale = Platform.OS === 'ios' ? NativeModules.SettingsManager?.settings?.AppleLocale || NativeModules.SettingsManager?.settings?.AppleLanguages?.[0] : NativeModules.I18nManager?.localeIdentifier;
-        lang = locale?.split(/[-_]/)[0] || 'en';
-      } catch (e) {
-        lang = 'en';
-      }
-    }
+    const lang = resolveLanguage(language);
     return TRANSLATIONS[lang] || TRANSLATIONS.en;
   }, [language]);
   const tabCounts = useMemo(() => {
@@ -246,28 +141,33 @@ export const DebugMonitor = ({
       LOGS: logs.filter(l => l.type === 'info' || l.type === 'error' && !l.url).length,
       WEBSOCKET: logs.filter(l => l.type === 'websocket').length,
       PERFORMANCE: logs.filter(l => l.type === 'performance').length,
+      STORE: logs.filter(l => l.type === 'action').length,
       SETTINGS: 0
     };
   }, [logs]);
   const filteredLogs = useMemo(() => {
-    return logs.filter(log => {
-      const typeMatch = activeTab === 'ALL' ? true : activeTab === 'NETWORK' ? ['request', 'response'].includes(log.type) || log.type === 'error' && !!log.url : activeTab === 'LOGS' ? log.type === 'info' || log.type === 'error' && !log.url : activeTab === 'WEBSOCKET' ? log.type === 'websocket' : activeTab === 'PERFORMANCE' ? log.type === 'performance' : false;
+    const result = logs.filter(log => {
+      const typeMatch = activeTab === 'ALL' ? true : activeTab === 'NETWORK' ? ['request', 'response'].includes(log.type) || log.type === 'error' && !!log.url : activeTab === 'LOGS' ? log.type === 'info' || log.type === 'error' && !log.url : activeTab === 'WEBSOCKET' ? log.type === 'websocket' : activeTab === 'PERFORMANCE' ? log.type === 'performance' : activeTab === 'STORE' ? log.type === 'action' : false;
       if (!typeMatch && activeTab !== 'SETTINGS') return false;
       const matchesSearch = searchQuery === '' || log.url?.toLowerCase().includes(searchQuery.toLowerCase()) || log.message?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesMethod = filterMethod === 'ALL' || log.method === filterMethod;
       const matchesStatus = filterStatus === 'ALL' ? true : filterStatus === 'ERR' ? !!log.status && log.status >= 400 : !!log.status && log.status < 400;
       return matchesSearch && matchesMethod && matchesStatus;
     });
-  }, [logs, activeTab, searchQuery, filterMethod, filterStatus]);
+    if (maxLogs && maxLogs > 0) {
+      return result.slice(0, maxLogs);
+    }
+    return result;
+  }, [logs, activeTab, searchQuery, filterMethod, filterStatus, maxLogs]);
   const handleExportJson = async () => {
     try {
       const report = generateExportReport(logs);
       await Share.share({
         message: JSON.stringify(report, null, 2),
-        title: 'Network Monitor Export Report'
+        title: t.reportTitle
       });
     } catch (e) {
-      Alert.alert('Error', 'Could not share report');
+      Alert.alert(t.error, t.couldNotShareReport);
     }
   };
   const handleExportText = async () => {
@@ -276,21 +176,37 @@ export const DebugMonitor = ({
       const text = formatReportAsText(report);
       await Share.share({
         message: text,
-        title: 'Network Monitor Export Report'
+        title: t.reportTitle
       });
     } catch (e) {
-      Alert.alert('Error', 'Could not share report');
+      Alert.alert(t.error, t.couldNotShareReport);
     }
   };
   const handleShareLog = async log => {
     try {
-      const lines = [`Type: ${log.type}`, `Time: ${log.timestamp}`, log.method ? `Method: ${log.method}` : null, log.url ? `URL: ${log.url}` : null, log.status ? `Status: ${log.status}` : null, log.message ? `Message: ${log.message}` : null, log.durationMs !== undefined ? `Duration: ${log.durationMs}ms` : null, log.size ? `Size: ${log.size}` : null].filter(Boolean).join('\n');
+      const parts = [];
+      parts.push(`Type: ${log.type}`, `Time: ${log.timestamp}`);
+      if (log.type === 'action' && log.stateData) {
+        const sd = log.stateData;
+        parts.push(`Store: ${sd.storeName}`);
+        if (sd.actionType) parts.push(`Action: ${sd.actionType}`);
+        if (sd.actionPayload) parts.push(`Payload: ${JSON.stringify(sd.actionPayload, null, 2)}`);
+        if (sd.diff) parts.push(`Diff: ${JSON.stringify(sd.diff, null, 2)}`);
+        if (sd.snapshot) parts.push(`Snapshot: ${JSON.stringify(sd.snapshot, null, 2)}`);
+      } else {
+        if (log.method) parts.push(`Method: ${log.method}`);
+        if (log.url) parts.push(`URL: ${log.url}`);
+        if (log.status) parts.push(`Status: ${log.status}`);
+        if (log.message) parts.push(`Message: ${log.message}`);
+        if (log.durationMs !== undefined) parts.push(`Duration: ${log.durationMs}${t.ms}`);
+        if (log.size) parts.push(`Size: ${log.size}`);
+      }
       await Share.share({
-        message: lines,
-        title: 'Log Entry'
+        message: parts.join('\n'),
+        title: t.logShareTitle
       });
     } catch (e) {
-      Alert.alert('Error', 'Could not share log');
+      Alert.alert(t.error, t.couldNotShareLog);
     }
   };
   const escapeShell = str => {
@@ -330,13 +246,13 @@ export const DebugMonitor = ({
   const handleSaveSettings = () => {
     const newUrl = manualUrl.trim();
     if (!newUrl) {
-      Alert.alert('Error', 'Please enter a URL');
+      Alert.alert(t.error, t.pleaseEnterUrl);
       return;
     }
     try {
       const parsed = new URL(newUrl);
       if (!['http:', 'https:'].includes(parsed.protocol)) {
-        Alert.alert('Error', 'URL must start with http:// or https://');
+        Alert.alert(t.error, t.urlMustStartWith);
         return;
       }
       const host = parsed.hostname;
@@ -344,11 +260,11 @@ export const DebugMonitor = ({
       const isLocal = host === 'localhost';
       const hasDot = host.includes('.');
       if (!isLocal && !isIp && !hasDot) {
-        Alert.alert('Error', 'Invalid domain format. Example: https://api.example.com or http://localhost');
+        Alert.alert(t.error, t.invalidDomainFormat);
         return;
       }
     } catch (e) {
-      Alert.alert('Error', 'Invalid URL format. Please include protocol (e.g., https://api.example.com)');
+      Alert.alert(t.error, t.invalidUrlFormat);
       return;
     }
     Logger.setBaseUrl(newUrl);
@@ -360,7 +276,7 @@ export const DebugMonitor = ({
     setCustomUrlEntries(Logger.getCustomUrls());
     setManualUrl('');
     if (onBaseUrlChange) onBaseUrlChange(newUrl);
-    Alert.alert('Success', 'New source applied');
+    Alert.alert(t.success, t.newSourceApplied);
   };
 
   /**
@@ -414,7 +330,7 @@ export const DebugMonitor = ({
       style: [styles.logChipText, {
         color: indicatorColor
       }]
-    }, item.method || (isConsoleError ? 'ERROR' : (item.type || '').toUpperCase()))), item.status ? /*#__PURE__*/React.createElement(View, {
+    }, item.method || (isConsoleError ? t.logChipError : (item.type || '').toUpperCase()))), item.status ? /*#__PURE__*/React.createElement(View, {
       style: [styles.logStatusChip, {
         backgroundColor: indicatorColor + '18'
       }]
@@ -438,11 +354,11 @@ export const DebugMonitor = ({
       style: styles.metaBadge
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.logMeta
-    }, "\u23F1 ", item.durationMs ?? 0, "ms")), /*#__PURE__*/React.createElement(View, {
+    }, "\u23F1 ", item.durationMs ?? 0, t.ms)), /*#__PURE__*/React.createElement(View, {
       style: styles.metaBadge
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.logMeta
-    }, "\uD83D\uDCE6 ", item.size || '0.00kb'))) : null));
+    }, "\uD83D\uDCE6 ", item.size || `0.00${t.kb}`))) : null));
   };
 
   /**
@@ -458,7 +374,7 @@ export const DebugMonitor = ({
     const allSources = [];
     if (prodUrl) {
       allSources.push({
-        title: 'PRODUCTION API (PROD)',
+        title: t.productionApi,
         url: prodUrl,
         type: 'url',
         val: prodUrl
@@ -466,7 +382,7 @@ export const DebugMonitor = ({
     }
     if (testUrl) {
       allSources.push({
-        title: 'TEST API (TEST)',
+        title: t.testApi,
         url: testUrl,
         type: 'url',
         val: testUrl
@@ -474,12 +390,12 @@ export const DebugMonitor = ({
     }
     if (envConfig) {
       allSources.push({
-        title: 'PRODUCTIVE (PROD)',
+        title: t.productive,
         type: 'env',
         val: 'prod'
       });
       allSources.push({
-        title: 'DEMONSTRATION (DEMO)',
+        title: t.demonstration,
         type: 'env',
         val: 'demo'
       });
@@ -512,7 +428,7 @@ export const DebugMonitor = ({
       style: styles.settingsSectionLine
     }), /*#__PURE__*/React.createElement(Text, {
       style: styles.settingsSectionTitle
-    }, t.selectUrl)), /*#__PURE__*/React.createElement(View, {
+    }, t.selectSource)), /*#__PURE__*/React.createElement(View, {
       style: styles.settingsCard
     }, allSources.map((item, index) => {
       const isUrlActive = baseUrl !== '' && baseUrl === item.val;
@@ -560,7 +476,7 @@ export const DebugMonitor = ({
       style: styles.settingsSectionLine
     }), /*#__PURE__*/React.createElement(Text, {
       style: styles.settingsSectionTitle
-    }, t.manualUrl)), /*#__PURE__*/React.createElement(View, {
+    }, t.manualEntry)), /*#__PURE__*/React.createElement(View, {
       style: styles.settingsCard
     }, /*#__PURE__*/React.createElement(View, {
       style: styles.cardInner
@@ -569,7 +485,7 @@ export const DebugMonitor = ({
     }, t.customUrl?.toUpperCase() || ''), /*#__PURE__*/React.createElement(TextInput, {
       style: styles.textInput,
       value: manualUrl,
-      placeholder: "https://api.example.com",
+      placeholder: t.manualUrlPlaceholder,
       placeholderTextColor: C.textDim,
       autoCapitalize: "none",
       keyboardType: "url",
@@ -579,7 +495,7 @@ export const DebugMonitor = ({
       onPress: handleSaveSettings
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.saveBtnText
-    }, "APPLY CHANGES"))))), /*#__PURE__*/React.createElement(View, {
+    }, t.applyChanges))))), /*#__PURE__*/React.createElement(View, {
       style: [styles.settingsSection, {
         marginTop: 32
       }]
@@ -589,7 +505,7 @@ export const DebugMonitor = ({
       style: styles.settingsSectionLine
     }), /*#__PURE__*/React.createElement(Text, {
       style: styles.settingsSectionTitle
-    }, "DEVICE INFO")), /*#__PURE__*/React.createElement(View, {
+    }, t.deviceInfo)), /*#__PURE__*/React.createElement(View, {
       style: styles.settingsCard
     }, /*#__PURE__*/React.createElement(View, {
       style: styles.cardInner
@@ -603,7 +519,7 @@ export const DebugMonitor = ({
       style: styles.settingsSectionLine
     }), /*#__PURE__*/React.createElement(Text, {
       style: styles.settingsSectionTitle
-    }, "ADVANCED TOOLS")), /*#__PURE__*/React.createElement(View, {
+    }, t.advancedTools)), /*#__PURE__*/React.createElement(View, {
       style: styles.settingsCard
     }, /*#__PURE__*/React.createElement(View, {
       style: styles.cardInner
@@ -615,7 +531,7 @@ export const DebugMonitor = ({
       onPress: handleExportJson
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.toolBtnText
-    }, "SHARE JSON REPORT")), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    }, t.shareJsonReport)), /*#__PURE__*/React.createElement(TouchableOpacity, {
       style: [styles.toolBtn, {
         margin: 0,
         marginBottom: 16
@@ -623,7 +539,7 @@ export const DebugMonitor = ({
       onPress: handleExportText
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.toolBtnText
-    }, "SHARE TEXT REPORT")), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    }, t.shareTextReport)), /*#__PURE__*/React.createElement(TouchableOpacity, {
       style: [styles.toolBtn, {
         margin: 0,
         marginBottom: 12,
@@ -634,7 +550,7 @@ export const DebugMonitor = ({
       style: [styles.toolBtnText, {
         color: C.accent
       }]
-    }, "SAVE JSON REPORT TO FILE")), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    }, t.saveJsonReportToFile)), /*#__PURE__*/React.createElement(TouchableOpacity, {
       style: [styles.toolBtn, {
         margin: 0,
         marginBottom: 16,
@@ -645,7 +561,7 @@ export const DebugMonitor = ({
       style: [styles.toolBtnText, {
         color: C.accent
       }]
-    }, "SAVE TEXT REPORT TO FILE")), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    }, t.saveTextReportToFile)), /*#__PURE__*/React.createElement(TouchableOpacity, {
       style: [styles.toolBtn, {
         margin: 0,
         borderColor: C.error + '40'
@@ -655,11 +571,109 @@ export const DebugMonitor = ({
       style: [styles.toolBtnText, {
         color: C.error
       }]
-    }, "WIPE ALL RECORDS"))))), /*#__PURE__*/React.createElement(View, {
+    }, t.wipeAllRecords))))), /*#__PURE__*/React.createElement(View, {
       style: {
         height: 60
       }
     }));
+  };
+  const renderStoreLogs = () => {
+    const storeLogs = logs.filter(l => l.type === 'action');
+    if (storeLogs.length === 0) {
+      return /*#__PURE__*/React.createElement(View, {
+        style: styles.wsContainer
+      }, /*#__PURE__*/React.createElement(View, {
+        style: [styles.perfCard, {
+          alignItems: 'center',
+          padding: 40
+        }]
+      }, /*#__PURE__*/React.createElement(Text, {
+        style: {
+          fontSize: 32,
+          marginBottom: 12
+        }
+      }, "\uD83D\uDDC4\uFE0F"), /*#__PURE__*/React.createElement(Text, {
+        style: [styles.perfLabel, {
+          textAlign: 'center',
+          marginBottom: 4
+        }]
+      }, t.noStoreActivity), /*#__PURE__*/React.createElement(Text, {
+        style: [styles.perfLabel, {
+          color: C.textSubtle,
+          fontSize: 10,
+          textAlign: 'center'
+        }]
+      }, t.storeSubtitle)));
+    }
+    return /*#__PURE__*/React.createElement(FlatList, {
+      data: storeLogs,
+      renderItem: ({
+        item
+      }) => {
+        const sd = item.stateData;
+        const hasDiff = sd?.diff && Object.keys(sd.diff).length > 0;
+        const changedKeys = hasDiff ? Object.keys(sd.diff).join(', ') : null;
+        return /*#__PURE__*/React.createElement(TouchableOpacity, {
+          activeOpacity: 0.7,
+          style: styles.logItem,
+          onPress: () => {
+            setSelectedLog(item);
+            setDetailTab('RESPONSE');
+          }
+        }, /*#__PURE__*/React.createElement(View, {
+          style: [styles.logIndicator, {
+            backgroundColor: C.accent
+          }]
+        }), /*#__PURE__*/React.createElement(View, {
+          style: styles.logBody
+        }, /*#__PURE__*/React.createElement(View, {
+          style: styles.logRow
+        }, /*#__PURE__*/React.createElement(View, {
+          style: [styles.logChip, {
+            backgroundColor: C.accent + '18'
+          }]
+        }, /*#__PURE__*/React.createElement(Text, {
+          style: [styles.logChipText, {
+            color: C.accent
+          }]
+        }, sd?.actionType ? sd.actionType : t.action)), /*#__PURE__*/React.createElement(Text, {
+          style: styles.logTime
+        }, new Date(item.timestamp).toLocaleTimeString([], {
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        }))), /*#__PURE__*/React.createElement(Text, {
+          style: styles.logUrl,
+          numberOfLines: 2
+        }, "[", sd?.storeName || 'Store', "] ", sd?.actionType || t.state), changedKeys ? /*#__PURE__*/React.createElement(View, {
+          style: styles.logMetaBox
+        }, /*#__PURE__*/React.createElement(View, {
+          style: styles.metaBadge
+        }, /*#__PURE__*/React.createElement(Text, {
+          style: styles.logMeta
+        }, t.changedKeys, ": ", changedKeys))) : sd?.snapshot ? /*#__PURE__*/React.createElement(View, {
+          style: styles.logMetaBox
+        }, /*#__PURE__*/React.createElement(View, {
+          style: styles.metaBadge
+        }, /*#__PURE__*/React.createElement(Text, {
+          style: styles.logMeta
+        }, t.snapshot))) : null));
+      },
+      keyExtractor: item => item.id,
+      contentContainerStyle: [styles.listContent, storeLogs.length === 0 && {
+        flex: 1
+      }],
+      ListEmptyComponent: /*#__PURE__*/React.createElement(View, {
+        style: styles.emptyContainer
+      }, /*#__PURE__*/React.createElement(Text, {
+        style: styles.emptyIcon
+      }, "\uD83D\uDDC4\uFE0F"), /*#__PURE__*/React.createElement(Text, {
+        style: styles.emptyText
+      }, t.noStoreActivity), /*#__PURE__*/React.createElement(Text, {
+        style: styles.emptySubText
+      }, t.storeSubtitle))
+    });
   };
   const renderPerformance = () => {
     const fps = fpsStats;
@@ -672,7 +686,7 @@ export const DebugMonitor = ({
       style: styles.perfToggle
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.perfToggleText
-    }, perfRunning ? 'FPS Monitor Active' : 'FPS Monitor Off'), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    }, perfRunning ? t.fpsMonitorActive : t.fpsMonitorOff), /*#__PURE__*/React.createElement(TouchableOpacity, {
       style: [styles.toggleTrack, perfRunning ? styles.toggleTrackActive : styles.toggleTrackInactive],
       onPress: () => {
         if (perfRunning) {
@@ -693,7 +707,7 @@ export const DebugMonitor = ({
       style: styles.perfRow
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.perfLabel
-    }, "CURRENT FPS"), /*#__PURE__*/React.createElement(Text, {
+    }, t.currentFps), /*#__PURE__*/React.createElement(Text, {
       style: [styles.perfValue, !fps ? {} : fps.fps >= 55 ? styles.perfValueGood : fps.fps >= 30 ? styles.perfValueWarning : styles.perfValueError]
     }, fpsLabel)), /*#__PURE__*/React.createElement(View, {
       style: styles.fpsBar
@@ -708,31 +722,31 @@ export const DebugMonitor = ({
       style: styles.perfRow
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.perfLabel
-    }, "AVERAGE FPS"), /*#__PURE__*/React.createElement(Text, {
+    }, t.averageFps), /*#__PURE__*/React.createElement(Text, {
       style: styles.perfValue
     }, fps.averageFps)), /*#__PURE__*/React.createElement(View, {
       style: styles.perfRow
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.perfLabel
-    }, "MIN FPS"), /*#__PURE__*/React.createElement(Text, {
+    }, t.minFps), /*#__PURE__*/React.createElement(Text, {
       style: [styles.perfValue, fps.minFps < 30 ? styles.perfValueError : styles.perfValueGood]
     }, fps.minFps)), /*#__PURE__*/React.createElement(View, {
       style: styles.perfRow
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.perfLabel
-    }, "MAX FPS"), /*#__PURE__*/React.createElement(Text, {
+    }, t.maxFps), /*#__PURE__*/React.createElement(Text, {
       style: styles.perfValue
     }, fps.maxFps)), /*#__PURE__*/React.createElement(View, {
       style: styles.perfRow
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.perfLabel
-    }, "DROPPED FRAMES"), /*#__PURE__*/React.createElement(Text, {
+    }, t.droppedFrames), /*#__PURE__*/React.createElement(Text, {
       style: [styles.perfValue, fps.droppedFrames > 10 ? styles.perfValueWarning : styles.perfValueGood]
     }, fps.droppedFrames))), /*#__PURE__*/React.createElement(View, {
       style: styles.perfCard
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.perfLabel
-    }, "FPS HISTORY (LAST 60 SECONDS)"), /*#__PURE__*/React.createElement(View, {
+    }, t.fpsHistory), /*#__PURE__*/React.createElement(View, {
       style: {
         height: 80,
         flexDirection: 'row',
@@ -761,7 +775,7 @@ export const DebugMonitor = ({
         textAlign: 'center',
         marginVertical: 20
       }]
-    }, "Tap the toggle above to start monitoring FPS")), /*#__PURE__*/React.createElement(View, {
+    }, t.fpsEmpty)), /*#__PURE__*/React.createElement(View, {
       style: {
         height: 60
       }
@@ -787,13 +801,13 @@ export const DebugMonitor = ({
           textAlign: 'center',
           marginBottom: 4
         }]
-      }, "NO WEBSOCKET ACTIVITY"), /*#__PURE__*/React.createElement(Text, {
+      }, t.noWebSocketActivity), /*#__PURE__*/React.createElement(Text, {
         style: [styles.perfLabel, {
           color: C.textSubtle,
           fontSize: 10,
           textAlign: 'center'
         }]
-      }, "WebSocket connections are automatically intercepted")));
+      }, t.wsSubtitle)));
     }
     return /*#__PURE__*/React.createElement(ScrollView, {
       style: styles.wsContainer
@@ -815,7 +829,7 @@ export const DebugMonitor = ({
         style: [styles.wsBadgeText, {
           color: badgeColor
         }]
-      }, isOpen ? 'OPEN' : isClose ? 'CLOSE' : isError ? 'ERROR' : 'MSG')), /*#__PURE__*/React.createElement(Text, {
+      }, isOpen ? t.wsOpen : isClose ? t.wsClose : isError ? t.wsError : t.wsMsg)), /*#__PURE__*/React.createElement(Text, {
         style: styles.wsUrl,
         numberOfLines: 1
       }, log.url), /*#__PURE__*/React.createElement(Text, {
@@ -847,39 +861,39 @@ export const DebugMonitor = ({
     const info = deviceInfo;
     return /*#__PURE__*/React.createElement(View, null, /*#__PURE__*/React.createElement(Text, {
       style: styles.deviceSectionTitle
-    }, "DEVICE"), /*#__PURE__*/React.createElement(View, {
+    }, t.device), /*#__PURE__*/React.createElement(View, {
       style: styles.deviceRow
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.deviceLabel
-    }, "Platform"), /*#__PURE__*/React.createElement(Text, {
+    }, t.platform), /*#__PURE__*/React.createElement(Text, {
       style: styles.deviceValue
     }, info.platform, " ", info.osVersion)), /*#__PURE__*/React.createElement(View, {
       style: styles.deviceRow
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.deviceLabel
-    }, "Model"), /*#__PURE__*/React.createElement(Text, {
+    }, t.model), /*#__PURE__*/React.createElement(Text, {
       style: styles.deviceValue
     }, info.deviceName)), /*#__PURE__*/React.createElement(View, {
       style: styles.deviceRow
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.deviceLabel
-    }, "Screen"), /*#__PURE__*/React.createElement(Text, {
+    }, t.screen), /*#__PURE__*/React.createElement(Text, {
       style: styles.deviceValue
     }, info.screenWidth, "x", info.screenHeight, " @", info.screenScale, "x")), /*#__PURE__*/React.createElement(Text, {
       style: [styles.deviceSectionTitle, {
         marginTop: 24
       }]
-    }, "APPLICATION"), info.appVersion && /*#__PURE__*/React.createElement(View, {
+    }, t.application), info.appVersion && /*#__PURE__*/React.createElement(View, {
       style: styles.deviceRow
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.deviceLabel
-    }, "App Version"), /*#__PURE__*/React.createElement(Text, {
+    }, t.appVersion), /*#__PURE__*/React.createElement(Text, {
       style: styles.deviceValue
     }, info.appVersion)), info.buildVersion && /*#__PURE__*/React.createElement(View, {
       style: styles.deviceRow
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.deviceLabel
-    }, "Build Version"), /*#__PURE__*/React.createElement(Text, {
+    }, t.buildVersion), /*#__PURE__*/React.createElement(Text, {
       style: styles.deviceValue
     }, info.buildVersion)));
   };
@@ -910,7 +924,7 @@ export const DebugMonitor = ({
     style: styles.headerLogoText
   }, "N")), /*#__PURE__*/React.createElement(Text, {
     style: styles.headerTitle
-  }, "Monitor"), /*#__PURE__*/React.createElement(View, {
+  }, headerTitle || t.monitor), /*#__PURE__*/React.createElement(View, {
     style: styles.headerCount
   }, /*#__PURE__*/React.createElement(Text, {
     style: {
@@ -944,13 +958,13 @@ export const DebugMonitor = ({
     horizontal: true,
     showsHorizontalScrollIndicator: false,
     contentContainerStyle: styles.tabScroll
-  }, ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'SETTINGS'].map(tab => /*#__PURE__*/React.createElement(TouchableOpacity, {
+  }, (customTabs || ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS']).map(tab => /*#__PURE__*/React.createElement(TouchableOpacity, {
     key: tab,
     style: styles.tabItem,
     onPress: () => setActiveTab(tab)
   }, /*#__PURE__*/React.createElement(Text, {
     style: [styles.tabText, activeTab === tab ? styles.tabTextActive : styles.tabTextInactive]
-  }, tab === 'ALL' ? t.all : tab === 'NETWORK' ? t.network : tab === 'LOGS' ? t.logs : tab === 'WEBSOCKET' ? 'WS' : tab === 'PERFORMANCE' ? 'FPS' : t.settings, /*#__PURE__*/React.createElement(Text, {
+  }, tab === 'ALL' ? t.all : tab === 'NETWORK' ? t.network : tab === 'LOGS' ? t.logs : tab === 'WEBSOCKET' ? t.ws : tab === 'PERFORMANCE' ? t.fps : tab === 'STORE' ? t.store : t.settings, /*#__PURE__*/React.createElement(Text, {
     style: styles.tabBadge
   }, tab !== 'SETTINGS' ? ` ${tabCounts[tab]}` : '')), activeTab === tab ? /*#__PURE__*/React.createElement(View, {
     style: styles.tabActiveLine
@@ -960,7 +974,7 @@ export const DebugMonitor = ({
     style: styles.searchBox
   }, /*#__PURE__*/React.createElement(TextInput, {
     style: styles.searchInput,
-    placeholder: t.search,
+    placeholder: searchPlaceholder || t.search,
     placeholderTextColor: C.textDim,
     value: searchQuery,
     onChangeText: setSearchQuery
@@ -976,7 +990,7 @@ export const DebugMonitor = ({
     onPress: () => setFilterStatus(s)
   }, /*#__PURE__*/React.createElement(Text, {
     style: [styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]
-  }, s === 'ALL' ? 'All' : s === 'OK' ? '2xx/3xx' : '4xx/5xx')))) : null) : null, activeTab === 'SETTINGS' ? renderSettings() : activeTab === 'PERFORMANCE' ? renderPerformance() : activeTab === 'WEBSOCKET' ? renderWebSocket() : /*#__PURE__*/React.createElement(FlatList, {
+  }, s === 'ALL' ? t.allFilter : s === 'OK' ? t.success2xx3xx : t.error4xx5xx)))) : null) : null, activeTab === 'SETTINGS' ? renderSettings() : activeTab === 'PERFORMANCE' ? renderPerformance() : activeTab === 'WEBSOCKET' ? renderWebSocket() : activeTab === 'STORE' ? renderStoreLogs() : /*#__PURE__*/React.createElement(FlatList, {
     data: filteredLogs,
     renderItem: renderLogItem,
     keyExtractor: item => item.id,
@@ -991,7 +1005,7 @@ export const DebugMonitor = ({
       style: styles.emptyText
     }, t.empty), /*#__PURE__*/React.createElement(Text, {
       style: styles.emptySubText
-    }, "Requests will appear here automatically"))
+    }, t.emptySubtitle))
   }), /*#__PURE__*/React.createElement(Modal, {
     transparent: true,
     visible: !!selectedLog,
@@ -1026,7 +1040,7 @@ export const DebugMonitor = ({
       style: [styles.detailTitle, isSelectedConsoleError && {
         color: C.error
       }]
-    }, selectedLog?.type === 'info' ? isSelectedConsoleError ? 'CONSOLE ERROR' : (t.logs || '').toUpperCase() : `${selectedLog?.durationMs ?? 0}ms, ${selectedLog?.size || '0.00kb'}`), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    }, selectedLog?.type === 'action' ? `[${selectedLog?.stateData?.storeName || t.store}] ${selectedLog?.stateData?.actionType || t.action}` : selectedLog?.type === 'info' ? isSelectedConsoleError ? t.consoleError : (t.logs || '').toUpperCase() : `${selectedLog?.durationMs ?? 0}${t.ms}, ${selectedLog?.size || `0.00${t.kb}`}`), /*#__PURE__*/React.createElement(TouchableOpacity, {
       style: styles.detailMenu,
       onPress: () => setShowMenu(!showMenu)
     }, /*#__PURE__*/React.createElement(Text, {
@@ -1041,28 +1055,37 @@ export const DebugMonitor = ({
       }
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.detailDropdownText
-    }, "Share Entry")), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    }, t.shareEntry)), /*#__PURE__*/React.createElement(TouchableOpacity, {
       style: styles.detailDropdownItem,
       onPress: () => {
         if (selectedLog) {
           const curl = generateCurl(selectedLog);
           Share.share({
             message: curl || JSON.stringify(selectedLog, null, 2),
-            title: 'cURL Command'
+            title: t.curlCommand
           });
         }
         setShowMenu(false);
       }
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.detailDropdownText
-    }, "Share cURL")), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    }, t.shareCurl)), customActions?.map((action, i) => /*#__PURE__*/React.createElement(TouchableOpacity, {
+      key: `ca-${i}`,
+      style: styles.detailDropdownItem,
+      onPress: () => {
+        if (selectedLog) action.onPress(selectedLog);
+        setShowMenu(false);
+      }
+    }, /*#__PURE__*/React.createElement(Text, {
+      style: styles.detailDropdownText
+    }, action.label))), /*#__PURE__*/React.createElement(TouchableOpacity, {
       style: [styles.detailDropdownItem, {
         borderBottomWidth: 0
       }],
       onPress: () => setShowMenu(false)
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.detailDropdownText
-    }, "Close"))) : null, selectedLog?.type !== 'info' && selectedLog?.type !== 'websocket' && selectedLog?.type !== 'performance' ? /*#__PURE__*/React.createElement(View, {
+    }, t.closeMenu))) : null, selectedLog?.type !== 'info' && selectedLog?.type !== 'websocket' && selectedLog?.type !== 'performance' && selectedLog?.type !== 'action' ? /*#__PURE__*/React.createElement(View, {
       style: styles.detailTabs
     }, /*#__PURE__*/React.createElement(TouchableOpacity, {
       style: [styles.detailTab, detailTab === 'REQUEST' && styles.detailTabActive],
@@ -1077,25 +1100,68 @@ export const DebugMonitor = ({
     }, (t.response || '').toUpperCase()))) : null, /*#__PURE__*/React.createElement(ScrollView, {
       style: styles.detailContent,
       showsVerticalScrollIndicator: false
-    }, selectedLog?.type === 'info' || selectedLog?.type === 'websocket' || selectedLog?.type === 'performance' ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Section, {
+    }, selectedLog?.type === 'info' || selectedLog?.type === 'websocket' || selectedLog?.type === 'performance' || selectedLog?.type === 'action' ? /*#__PURE__*/React.createElement(React.Fragment, null, selectedLog?.type === 'action' && selectedLog?.stateData ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Section, {
+      themeColors: C,
+      label: t.actionType,
+      value: selectedLog.stateData.actionType || '-'
+    }), /*#__PURE__*/React.createElement(Section, {
+      themeColors: C,
+      label: t.actionPayload,
+      json: selectedLog.stateData.actionPayload
+    }), selectedLog.stateData.diff ? Object.keys(selectedLog.stateData.diff).length > 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Text, {
+      style: [styles.sectionLabel, {
+        marginTop: 16,
+        marginBottom: 8
+      }]
+    }, t.changedKeys), Object.entries(selectedLog.stateData.diff).map(([key, val]) => /*#__PURE__*/React.createElement(View, {
+      key: key,
+      style: styles.sectionBox
+    }, /*#__PURE__*/React.createElement(Text, {
+      style: styles.sectionLabel
+    }, key), val.prev !== undefined ? /*#__PURE__*/React.createElement(Text, {
+      style: [styles.sectionLabel, {
+        color: C.textDim,
+        fontSize: 10
+      }]
+    }, t.prevState) : null, val.prev !== undefined ? /*#__PURE__*/React.createElement(View, {
+      style: styles.jsonBox
+    }, /*#__PURE__*/React.createElement(Text, {
+      selectable: true,
+      style: styles.jsonText
+    }, JSON.stringify(val.prev, null, 2))) : null, val.next !== undefined ? /*#__PURE__*/React.createElement(Text, {
+      style: [styles.sectionLabel, {
+        color: C.textDim,
+        fontSize: 10,
+        marginTop: 8
+      }]
+    }, t.nextState) : null, val.next !== undefined ? /*#__PURE__*/React.createElement(View, {
+      style: styles.jsonBox
+    }, /*#__PURE__*/React.createElement(Text, {
+      selectable: true,
+      style: styles.jsonText
+    }, JSON.stringify(val.next, null, 2))) : null))) : null : selectedLog.stateData.snapshot ? /*#__PURE__*/React.createElement(Section, {
+      themeColors: C,
+      label: t.fullState,
+      json: selectedLog.stateData.snapshot
+    }) : null) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Section, {
       themeColors: C,
       selectable: true,
-      label: selectedLog?.type === 'websocket' ? 'WEBSOCKET EVENT' : selectedLog?.type === 'performance' ? 'PERFORMANCE DATA' : 'LOG MESSAGE',
+      label: selectedLog?.type === 'websocket' ? t.websocketEvent : selectedLog?.type === 'performance' ? t.performanceData : t.logMessage,
       value: selectedLog?.message
     }), selectedLog?.url ? /*#__PURE__*/React.createElement(Section, {
       themeColors: C,
       selectable: true,
-      label: "URL",
+      label: t.url,
       value: selectedLog.url
     }) : null, /*#__PURE__*/React.createElement(Section, {
       themeColors: C,
-      label: "DATA",
+      label: t.data,
       json: selectedLog?.requestData
     }), selectedLog?.type === 'performance' && selectedLog?.durationMs ? /*#__PURE__*/React.createElement(Section, {
       themeColors: C,
-      label: "FPS",
+      label: t.fps,
       value: String(selectedLog.durationMs)
-    }) : null) : detailTab === 'REQUEST' ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Section, {
+    }) : null)) : detailTab === 'REQUEST' ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Section, {
       themeColors: C,
       label: t.method,
       value: selectedLog?.method
@@ -1114,7 +1180,7 @@ export const DebugMonitor = ({
       json: selectedLog?.requestData
     })) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Section, {
       themeColors: C,
-      label: t.status,
+      label: t.statusCode,
       value: selectedLog?.status?.toString(),
       color: selectedLog?.status && selectedLog.status >= 400 ? C.error : C.success
     }), /*#__PURE__*/React.createElement(Section, {

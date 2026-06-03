@@ -31,7 +31,7 @@ export interface ThemeColors {
 }
 export declare const DARK_COLORS: ThemeColors;
 export declare const LIGHT_COLORS: ThemeColors;
-export declare const getColors: (theme: "dark" | "light") => ThemeColors;
+export declare const getColors: (theme: "dark" | "light", overrides?: Partial<ThemeColors>) => ThemeColors;
 export declare const COLORS: ThemeColors;
 declare const styleSheet: (C?: ThemeColors) => {
     container: {

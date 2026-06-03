@@ -33,14 +33,34 @@ export {
 } from './PersistenceManager';
 
 // Logger (singleton)
-export { Logger, type LogEntry, type LogType, type CustomUrlEntry } from './Logger';
+export { Logger, type LogEntry, type LogType, type CustomUrlEntry, type StateActionData } from './Logger';
 
 // UI Components
-export { DebugMonitor } from './DebugMonitor';
+export { DebugMonitor, type TabType } from './DebugMonitor';
 export { DebugTrigger, type DebugTriggerProps } from './DebugTrigger';
 
 // Debug Context (programmatic open/close)
 export { useDebugger, type DebugContextValue } from './DebugContext';
+
+// Translations / i18n
+export {
+  type LanguageCode,
+  type ResolvedLanguage,
+  type Translation,
+  SUPPORTED_LANGUAGES,
+  RTL_LANGUAGES,
+  TRANSLATIONS,
+  resolveLanguage,
+  getDeviceLanguage,
+} from './translations';
+
+// State/Store Monitor
+export {
+  subscribeToState,
+  createReduxMiddleware,
+  createZustandMonitor,
+  type StateMonitorConfig,
+} from './StateMonitor';
 
 // Storage adapter system
 export {

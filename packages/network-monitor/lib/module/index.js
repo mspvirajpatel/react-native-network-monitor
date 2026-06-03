@@ -31,6 +31,12 @@ export { DebugTrigger } from './DebugTrigger';
 // Debug Context (programmatic open/close)
 export { useDebugger } from './DebugContext';
 
+// Translations / i18n
+export { SUPPORTED_LANGUAGES, RTL_LANGUAGES, TRANSLATIONS, resolveLanguage, getDeviceLanguage } from './translations';
+
+// State/Store Monitor
+export { subscribeToState, createReduxMiddleware, createZustandMonitor } from './StateMonitor';
+
 // Storage adapter system
 export { setStorageAdapter, getStorageAdapter } from './storage';
 

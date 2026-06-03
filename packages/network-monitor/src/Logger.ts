@@ -1,6 +1,14 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-export type LogType = 'request' | 'response' | 'error' | 'info' | 'database' | 'navigation' | 'websocket' | 'performance';
+export type LogType = 'request' | 'response' | 'error' | 'info' | 'database' | 'navigation' | 'websocket' | 'performance' | 'action';
+
+export interface StateActionData {
+  storeName: string;
+  actionType?: string;
+  actionPayload?: any;
+  diff?: Record<string, { prev: any; next: any }>;
+  snapshot?: any;
+}
 
 export interface LogEntry {
   id: string;
@@ -19,6 +27,7 @@ export interface LogEntry {
   message?: string;
   durationMs?: number;
   size?: string;
+  stateData?: StateActionData;
 }
 
 export interface CustomUrlEntry {
@@ -389,6 +398,20 @@ class DebugLogger {
       requestData: data.data,
       status: data.status
     });
+    this.notify();
+  }
+
+  public logAction(data: StateActionData) {
+    this.logs.unshift({
+      id: Math.random().toString(36).substring(7),
+      type: 'action',
+      timestamp: new Date().toISOString(),
+      message: data.actionType || `[${data.storeName}] State Change`,
+      stateData: data,
+    });
+    if (this.logs.length > 500) {
+      this.logs.pop();
+    }
     this.notify();
   }
 

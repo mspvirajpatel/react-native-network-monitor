@@ -13,18 +13,21 @@ import {
   TextInput,
   StatusBar,
   FlatList,
-  Platform,
-  NativeModules,
   useColorScheme
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import styleSheet, { getColors, DARK_COLORS } from './DebugMonitorStyles';
+import styleSheet, { getColors, DARK_COLORS, type ThemeColors } from './DebugMonitorStyles';
 import { Logger, LogEntry, CustomUrlEntry } from './Logger';
 import { FpsStats, subscribeToFps, isPerformanceMonitorRunning, startPerformanceMonitor, stopPerformanceMonitor } from './PerformanceMonitor';
 import { getDeviceInfo, DeviceInfoData } from './DeviceInfo';
 import { generateExportReport, formatReportAsText } from './ExportReport';
 import { isInternalUrl } from './NetworkMonitor';
 import { saveReportToJson, saveReportToText } from './FileExporter';
+import {
+  TRANSLATIONS,
+  resolveLanguage,
+  type LanguageCode,
+} from './translations';
 
 interface DebugMonitorProps {
   onClose: () => void;
@@ -37,122 +40,20 @@ interface DebugMonitorProps {
   prodUrl?: string;
   testUrl?: string;
   onExitDebugMode?: () => void;
-  language?: 'az' | 'en' | 'ru' | 'tr' | 'auto';
+  language?: LanguageCode;
   theme?: 'light' | 'dark' | 'auto';
+  colors?: Partial<ThemeColors>;
+  tabs?: TabType[];
+  headerTitle?: string;
+  searchPlaceholder?: string;
+  maxLogs?: number;
+  customActions?: {
+    label: string;
+    onPress: (log: LogEntry) => void;
+  }[];
 }
 
-const TRANSLATIONS: Record<string, any> = {
-  az: {
-    title: 'Debug Monitor',
-    entries: 'qeyd',
-    search: 'Axtar...',
-    clear: 'Təmizlə',
-    all: 'Hamısı',
-    logs: 'Loglar',
-    network: 'Şəbəkə',
-    db: 'Baza',
-    nav: 'Nav',
-    settings: 'Ayarlar',
-    export: 'Export',
-    close: 'Bağla',
-    exit: 'Xitam',
-    back: 'Geri',
-    empty: 'Log tapılmadı',
-    request: 'Sorğu',
-    response: 'Cavab',
-    method: 'METOD',
-    url: 'URL',
-    headers: 'HEADERS',
-    status: 'STATUS KODU',
-    body: 'BODY',
-    customUrl: 'Fərdi URL',
-    selectUrl: 'MƏNBƏ SEÇİMİ',
-    manualUrl: 'ƏL İLƏ DAXİL ET'
-  },
-  en: {
-    title: 'Debug Monitor',
-    entries: 'entries',
-    search: 'Search...',
-    clear: 'Clear',
-    all: 'All',
-    logs: 'Logs',
-    network: 'Network',
-    db: 'DB',
-    nav: 'Nav',
-    settings: 'Settings',
-    export: 'Export',
-    close: 'Close',
-    exit: 'Exit',
-    back: 'Back',
-    empty: 'No logs found',
-    request: 'Request',
-    response: 'Response',
-    method: 'METHOD',
-    url: 'URL',
-    headers: 'HEADERS',
-    status: 'STATUS CODE',
-    body: 'BODY',
-    customUrl: 'Custom URL',
-    selectUrl: 'SELECT SOURCE',
-    manualUrl: 'MANUAL ENTRY'
-  },
-  tr: {
-    title: 'Debug Monitor',
-    entries: 'kayıt',
-    search: 'Ara...',
-    clear: 'Temizle',
-    all: 'Hepsi',
-    logs: 'Loglar',
-    network: 'Ağ',
-    db: 'Veri',
-    nav: 'Nav',
-    settings: 'Ayarlar',
-    export: 'Dışa Aktar',
-    close: 'Kapat',
-    exit: 'Çıkış',
-    back: 'Geri',
-    empty: 'Log bulunamadı',
-    request: 'Sorgu',
-    response: 'Yanıt',
-    method: 'METOD',
-    url: 'URL',
-    headers: 'HEADERS',
-    status: 'DURUM KODU',
-    body: 'BODY',
-    customUrl: 'Özel URL',
-    selectUrl: 'KAYNAK SEÇ',
-    manualUrl: 'MANUEL GİRİŞ'
-  },
-  ru: {
-    title: 'Дебаг Монитор',
-    entries: 'записей',
-    search: 'Поиск...',
-    clear: 'Очистить',
-    all: 'Все',
-    logs: 'Логи',
-    network: 'Сеть',
-    db: 'База',
-    nav: 'Нав',
-    settings: 'Настройки',
-    export: 'Экспорт',
-    close: 'Закрыть',
-    exit: 'Выход',
-    back: 'Назад',
-    empty: 'Логи не найдены',
-    request: 'Запрос',
-    response: 'Ответ',
-    method: 'МЕТОД',
-    url: 'URL',
-    headers: 'HEADERS',
-    status: 'КОД СТАТУСА',
-    body: 'ТЕЛО',
-    customUrl: 'Пользовательский URL',
-    selectUrl: 'ВЫБОР ИСТОЧНИКА',
-    manualUrl: 'РУЧНОЙ ВВОД'
-  }
-};
-
-export type TabType = 'ALL' | 'NETWORK' | 'LOGS' | 'WEBSOCKET' | 'PERFORMANCE' | 'SETTINGS';
+export type TabType = 'ALL' | 'NETWORK' | 'LOGS' | 'WEBSOCKET' | 'PERFORMANCE' | 'STORE' | 'SETTINGS';
 export type DetailTab = 'REQUEST' | 'RESPONSE';
 
 /**
@@ -247,12 +148,18 @@ export const DebugMonitor = ({
   prodUrl,
   testUrl,
   language = 'auto',
-  theme = 'auto'
+  theme = 'auto',
+  colors: customColors,
+  tabs: customTabs,
+  headerTitle,
+  searchPlaceholder,
+  maxLogs,
+  customActions
 }: DebugMonitorProps) => {
   const systemScheme = useColorScheme();
   const effectiveTheme: 'dark' | 'light' =
     theme === 'auto' ? (systemScheme === 'light' ? 'light' : 'dark') : theme;
-  const C = getColors(effectiveTheme);
+  const C = getColors(effectiveTheme, customColors);
   const styles = styleSheet(C);
 
   const [logs, setLogs] = useState<LogEntry[]>(Logger.getLogs());
@@ -270,6 +177,14 @@ export const DebugMonitor = ({
   const [perfRunning, setPerfRunning] = useState(isPerformanceMonitorRunning());
   const [deviceInfo] = useState<DeviceInfoData>(getDeviceInfo());
 
+  const availableTabs = customTabs || (['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'] as TabType[]);
+
+  useEffect(() => {
+    if (!availableTabs.includes(activeTab)) {
+      setActiveTab(availableTabs[0] || 'ALL');
+    }
+  }, [availableTabs, activeTab]);
+
   useEffect(() => {
     const unsubscribe = Logger.subscribe((newLogs) => {
       setLogs(newLogs);
@@ -285,19 +200,7 @@ export const DebugMonitor = ({
   }, []);
 
   const t = useMemo(() => {
-    let lang = language;
-    if (lang === 'auto') {
-      try {
-        const locale =
-          Platform.OS === 'ios'
-            ? NativeModules.SettingsManager?.settings?.AppleLocale ||
-              NativeModules.SettingsManager?.settings?.AppleLanguages?.[0]
-            : NativeModules.I18nManager?.localeIdentifier;
-        lang = (locale?.split(/[-_]/)[0] || 'en') as any;
-      } catch (e) {
-        lang = 'en';
-      }
-    }
+    const lang = resolveLanguage(language);
     return TRANSLATIONS[lang] || TRANSLATIONS.en;
   }, [language]);
 
@@ -311,12 +214,13 @@ export const DebugMonitor = ({
         .length,
       WEBSOCKET: logs.filter((l: LogEntry) => l.type === 'websocket').length,
       PERFORMANCE: logs.filter((l: LogEntry) => l.type === 'performance').length,
+      STORE: logs.filter((l: LogEntry) => l.type === 'action').length,
       SETTINGS: 0
     };
   }, [logs]);
 
   const filteredLogs = useMemo(() => {
-    return logs.filter((log: LogEntry) => {
+    const result = logs.filter((log: LogEntry) => {
       const typeMatch =
         activeTab === 'ALL'
           ? true
@@ -328,7 +232,9 @@ export const DebugMonitor = ({
                 ? log.type === 'websocket'
                 : activeTab === 'PERFORMANCE'
                   ? log.type === 'performance'
-                  : false;
+                  : activeTab === 'STORE'
+                    ? log.type === 'action'
+                    : false;
 
       if (!typeMatch && activeTab !== 'SETTINGS') return false;
 
@@ -348,17 +254,21 @@ export const DebugMonitor = ({
 
       return matchesSearch && matchesMethod && matchesStatus;
     });
-  }, [logs, activeTab, searchQuery, filterMethod, filterStatus]);
+    if (maxLogs && maxLogs > 0) {
+      return result.slice(0, maxLogs);
+    }
+    return result;
+  }, [logs, activeTab, searchQuery, filterMethod, filterStatus, maxLogs]);
 
   const handleExportJson = async (): Promise<void> => {
     try {
       const report = generateExportReport(logs);
       await Share.share({
         message: JSON.stringify(report, null, 2),
-        title: 'Network Monitor Export Report',
+        title: t.reportTitle,
       });
     } catch (e) {
-      Alert.alert('Error', 'Could not share report');
+      Alert.alert(t.error, t.couldNotShareReport);
     }
   };
 
@@ -368,28 +278,35 @@ export const DebugMonitor = ({
       const text = formatReportAsText(report);
       await Share.share({
         message: text,
-        title: 'Network Monitor Export Report',
+        title: t.reportTitle,
       });
     } catch (e) {
-      Alert.alert('Error', 'Could not share report');
+      Alert.alert(t.error, t.couldNotShareReport);
     }
   };
 
   const handleShareLog = async (log: LogEntry): Promise<void> => {
     try {
-      const lines = [
-        `Type: ${log.type}`,
-        `Time: ${log.timestamp}`,
-        log.method ? `Method: ${log.method}` : null,
-        log.url ? `URL: ${log.url}` : null,
-        log.status ? `Status: ${log.status}` : null,
-        log.message ? `Message: ${log.message}` : null,
-        log.durationMs !== undefined ? `Duration: ${log.durationMs}ms` : null,
-        log.size ? `Size: ${log.size}` : null,
-      ].filter(Boolean).join('\n');
-      await Share.share({ message: lines, title: 'Log Entry' });
+      const parts: string[] = [];
+      parts.push(`Type: ${log.type}`, `Time: ${log.timestamp}`);
+      if (log.type === 'action' && log.stateData) {
+        const sd = log.stateData;
+        parts.push(`Store: ${sd.storeName}`);
+        if (sd.actionType) parts.push(`Action: ${sd.actionType}`);
+        if (sd.actionPayload) parts.push(`Payload: ${JSON.stringify(sd.actionPayload, null, 2)}`);
+        if (sd.diff) parts.push(`Diff: ${JSON.stringify(sd.diff, null, 2)}`);
+        if (sd.snapshot) parts.push(`Snapshot: ${JSON.stringify(sd.snapshot, null, 2)}`);
+      } else {
+        if (log.method) parts.push(`Method: ${log.method}`);
+        if (log.url) parts.push(`URL: ${log.url}`);
+        if (log.status) parts.push(`Status: ${log.status}`);
+        if (log.message) parts.push(`Message: ${log.message}`);
+        if (log.durationMs !== undefined) parts.push(`Duration: ${log.durationMs}${t.ms}`);
+        if (log.size) parts.push(`Size: ${log.size}`);
+      }
+      await Share.share({ message: parts.join('\n'), title: t.logShareTitle });
     } catch (e) {
-      Alert.alert('Error', 'Could not share log');
+      Alert.alert(t.error, t.couldNotShareLog);
     }
   };
 
@@ -433,14 +350,14 @@ export const DebugMonitor = ({
   const handleSaveSettings = (): void => {
     const newUrl = manualUrl.trim();
     if (!newUrl) {
-      Alert.alert('Error', 'Please enter a URL');
+      Alert.alert(t.error, t.pleaseEnterUrl);
       return;
     }
 
     try {
       const parsed = new URL(newUrl);
       if (!['http:', 'https:'].includes(parsed.protocol)) {
-        Alert.alert('Error', 'URL must start with http:// or https://');
+        Alert.alert(t.error, t.urlMustStartWith);
         return;
       }
 
@@ -450,17 +367,11 @@ export const DebugMonitor = ({
       const hasDot = host.includes('.');
 
       if (!isLocal && !isIp && !hasDot) {
-        Alert.alert(
-          'Error',
-          'Invalid domain format. Example: https://api.example.com or http://localhost'
-        );
+        Alert.alert(t.error, t.invalidDomainFormat);
         return;
       }
     } catch (e) {
-      Alert.alert(
-        'Error',
-        'Invalid URL format. Please include protocol (e.g., https://api.example.com)'
-      );
+      Alert.alert(t.error, t.invalidUrlFormat);
       return;
     }
 
@@ -472,7 +383,7 @@ export const DebugMonitor = ({
 
     setManualUrl('');
     if (onBaseUrlChange) onBaseUrlChange(newUrl);
-    Alert.alert('Success', 'New source applied');
+    Alert.alert(t.success, t.newSourceApplied);
   };
 
   /**
@@ -524,7 +435,7 @@ export const DebugMonitor = ({
           <View style={styles.logRow}>
             <View style={[styles.logChip, { backgroundColor: indicatorColor + '18' }]}>
               <Text style={[styles.logChipText, { color: indicatorColor }]}>
-                {item.method || (isConsoleError ? 'ERROR' : (item.type || '').toUpperCase())}
+                {item.method || (isConsoleError ? t.logChipError : (item.type || '').toUpperCase())}
               </Text>
             </View>
             {item.status ? (
@@ -547,10 +458,10 @@ export const DebugMonitor = ({
           {item.durationMs !== undefined ? (
             <View style={styles.logMetaBox}>
               <View style={styles.metaBadge}>
-                <Text style={styles.logMeta}>⏱ {item.durationMs ?? 0}ms</Text>
+                <Text style={styles.logMeta}>⏱ {item.durationMs ?? 0}{t.ms}</Text>
               </View>
               <View style={styles.metaBadge}>
-                <Text style={styles.logMeta}>📦 {item.size || '0.00kb'}</Text>
+                <Text style={styles.logMeta}>📦 {item.size || `0.00${t.kb}`}</Text>
               </View>
             </View>
           ) : null}
@@ -575,15 +486,15 @@ export const DebugMonitor = ({
     const allSources: { title: string; url?: string; type: 'env' | 'url'; val: any }[] = [];
 
     if (prodUrl) {
-      allSources.push({ title: 'PRODUCTION API (PROD)', url: prodUrl, type: 'url', val: prodUrl });
+      allSources.push({ title: t.productionApi, url: prodUrl, type: 'url', val: prodUrl });
     }
     if (testUrl) {
-      allSources.push({ title: 'TEST API (TEST)', url: testUrl, type: 'url', val: testUrl });
+      allSources.push({ title: t.testApi, url: testUrl, type: 'url', val: testUrl });
     }
 
     if (envConfig) {
-      allSources.push({ title: 'PRODUCTIVE (PROD)', type: 'env', val: 'prod' });
-      allSources.push({ title: 'DEMONSTRATION (DEMO)', type: 'env', val: 'demo' });
+      allSources.push({ title: t.productive, type: 'env', val: 'prod' });
+      allSources.push({ title: t.demonstration, type: 'env', val: 'demo' });
     }
 
     predefinedList.forEach((item) => {
@@ -602,7 +513,7 @@ export const DebugMonitor = ({
           <View style={styles.settingsSection}>
             <View style={styles.settingsSectionHeader}>
               <View style={styles.settingsSectionLine} />
-              <Text style={styles.settingsSectionTitle}>{t.selectUrl}</Text>
+              <Text style={styles.settingsSectionTitle}>{t.selectSource}</Text>
             </View>
             <View style={styles.settingsCard}>
               {allSources.map((item: any, index: number) => {
@@ -661,7 +572,7 @@ export const DebugMonitor = ({
         <View style={[styles.settingsSection, { marginTop: allSources.length > 0 ? 32 : 0 }]}>
           <View style={styles.settingsSectionHeader}>
             <View style={styles.settingsSectionLine} />
-            <Text style={styles.settingsSectionTitle}>{t.manualUrl}</Text>
+            <Text style={styles.settingsSectionTitle}>{t.manualEntry}</Text>
           </View>
           <View style={styles.settingsCard}>
             <View style={styles.cardInner}>
@@ -669,14 +580,14 @@ export const DebugMonitor = ({
               <TextInput
                 style={styles.textInput}
                 value={manualUrl}
-                placeholder="https://api.example.com"
+                placeholder={t.manualUrlPlaceholder}
                 placeholderTextColor={C.textDim}
                 autoCapitalize="none"
                 keyboardType="url"
                 onChangeText={setManualUrl}
               />
               <TouchableOpacity style={styles.saveBtn} onPress={handleSaveSettings}>
-                <Text style={styles.saveBtnText}>APPLY CHANGES</Text>
+                <Text style={styles.saveBtnText}>{t.applyChanges}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -685,7 +596,7 @@ export const DebugMonitor = ({
         <View style={[styles.settingsSection, { marginTop: 32 }]}>
             <View style={styles.settingsSectionHeader}>
               <View style={styles.settingsSectionLine} />
-              <Text style={styles.settingsSectionTitle}>DEVICE INFO</Text>
+              <Text style={styles.settingsSectionTitle}>{t.deviceInfo}</Text>
           </View>
           <View style={styles.settingsCard}>
             <View style={styles.cardInner}>
@@ -697,29 +608,29 @@ export const DebugMonitor = ({
         <View style={[styles.settingsSection, { marginTop: 32 }]}>
             <View style={styles.settingsSectionHeader}>
               <View style={styles.settingsSectionLine} />
-              <Text style={styles.settingsSectionTitle}>ADVANCED TOOLS</Text>
+              <Text style={styles.settingsSectionTitle}>{t.advancedTools}</Text>
           </View>
           <View style={styles.settingsCard}>
             <View style={styles.cardInner}>
               <TouchableOpacity style={[styles.toolBtn, { margin: 0, marginBottom: 12 }]} onPress={handleExportJson}>
-                <Text style={styles.toolBtnText}>SHARE JSON REPORT</Text>
+                <Text style={styles.toolBtnText}>{t.shareJsonReport}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.toolBtn, { margin: 0, marginBottom: 16 }]} onPress={handleExportText}>
-                <Text style={styles.toolBtnText}>SHARE TEXT REPORT</Text>
+                <Text style={styles.toolBtnText}>{t.shareTextReport}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={[styles.toolBtn, { margin: 0, marginBottom: 12, borderColor: C.accent + '40' }]} onPress={() => saveReportToJson(logs)}>
-                <Text style={[styles.toolBtnText, { color: C.accent }]}>SAVE JSON REPORT TO FILE</Text>
+                <Text style={[styles.toolBtnText, { color: C.accent }]}>{t.saveJsonReportToFile}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.toolBtn, { margin: 0, marginBottom: 16, borderColor: C.accent + '40' }]} onPress={() => saveReportToText(logs)}>
-                <Text style={[styles.toolBtnText, { color: C.accent }]}>SAVE TEXT REPORT TO FILE</Text>
+                <Text style={[styles.toolBtnText, { color: C.accent }]}>{t.saveTextReportToFile}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.toolBtn, { margin: 0, borderColor: C.error + '40' }]}
                 onPress={() => Logger.clearLogs()}
               >
-                <Text style={[styles.toolBtnText, { color: C.error }]}>WIPE ALL RECORDS</Text>
+                <Text style={[styles.toolBtnText, { color: C.error }]}>{t.wipeAllRecords}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -728,6 +639,83 @@ export const DebugMonitor = ({
       </ScrollView>
     );
   };
+  const renderStoreLogs = (): React.ReactElement => {
+    const storeLogs = logs.filter((l: LogEntry) => l.type === 'action');
+    if (storeLogs.length === 0) {
+      return (
+        <View style={styles.wsContainer}>
+          <View style={[styles.perfCard, { alignItems: 'center', padding: 40 }]}>
+            <Text style={{ fontSize: 32, marginBottom: 12 }}>🗄️</Text>
+            <Text style={[styles.perfLabel, { textAlign: 'center', marginBottom: 4 }]}>{t.noStoreActivity}</Text>
+            <Text style={[styles.perfLabel, { color: C.textSubtle, fontSize: 10, textAlign: 'center' }]}>
+              {t.storeSubtitle}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={storeLogs}
+        renderItem={({ item }: { item: LogEntry }) => {
+          const sd = item.stateData;
+          const hasDiff = sd?.diff && Object.keys(sd.diff).length > 0;
+          const changedKeys = hasDiff ? Object.keys(sd!.diff!).join(', ') : null;
+          return (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.logItem}
+              onPress={() => {
+                setSelectedLog(item);
+                setDetailTab('RESPONSE');
+              }}
+            >
+              <View style={[styles.logIndicator, { backgroundColor: C.accent }]} />
+              <View style={styles.logBody}>
+                <View style={styles.logRow}>
+                  <View style={[styles.logChip, { backgroundColor: C.accent + '18' }]}>
+                    <Text style={[styles.logChipText, { color: C.accent }]}>
+                      {sd?.actionType ? sd.actionType : t.action}
+                    </Text>
+                  </View>
+                  <Text style={styles.logTime}>
+                    {new Date(item.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </Text>
+                </View>
+                <Text style={styles.logUrl} numberOfLines={2}>
+                  [{sd?.storeName || 'Store'}] {sd?.actionType || t.state}
+                </Text>
+                {changedKeys ? (
+                  <View style={styles.logMetaBox}>
+                    <View style={styles.metaBadge}>
+                      <Text style={styles.logMeta}>{t.changedKeys}: {changedKeys}</Text>
+                    </View>
+                  </View>
+                ) : sd?.snapshot ? (
+                  <View style={styles.logMetaBox}>
+                    <View style={styles.metaBadge}>
+                      <Text style={styles.logMeta}>{t.snapshot}</Text>
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          );
+        }}
+        keyExtractor={(item: LogEntry) => item.id}
+        contentContainerStyle={[styles.listContent, storeLogs.length === 0 && { flex: 1 }]}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>🗄️</Text>
+            <Text style={styles.emptyText}>{t.noStoreActivity}</Text>
+            <Text style={styles.emptySubText}>{t.storeSubtitle}</Text>
+          </View>
+        }
+      />
+    );
+  };
+
   const renderPerformance = (): React.ReactElement => {
     const fps = fpsStats;
     const fpsPercent = fps ? Math.min((fps.fps / 60) * 100, 100) : 0;
@@ -738,7 +726,7 @@ export const DebugMonitor = ({
       <ScrollView style={styles.perfContainer}>
         <View style={styles.perfToggle}>
           <Text style={styles.perfToggleText}>
-            {perfRunning ? 'FPS Monitor Active' : 'FPS Monitor Off'}
+            {perfRunning ? t.fpsMonitorActive : t.fpsMonitorOff}
           </Text>
           <TouchableOpacity
             style={[
@@ -761,7 +749,7 @@ export const DebugMonitor = ({
 
         <View style={styles.perfCard}>
           <View style={styles.perfRow}>
-            <Text style={styles.perfLabel}>CURRENT FPS</Text>
+            <Text style={styles.perfLabel}>{t.currentFps}</Text>
             <Text style={[styles.perfValue, !fps ? {} : fps.fps >= 55 ? styles.perfValueGood : fps.fps >= 30 ? styles.perfValueWarning : styles.perfValueError]}>
               {fpsLabel}
             </Text>
@@ -775,25 +763,25 @@ export const DebugMonitor = ({
           <>
             <View style={styles.perfCard}>
               <View style={styles.perfRow}>
-                <Text style={styles.perfLabel}>AVERAGE FPS</Text>
+                <Text style={styles.perfLabel}>{t.averageFps}</Text>
                 <Text style={styles.perfValue}>{fps.averageFps}</Text>
               </View>
               <View style={styles.perfRow}>
-                <Text style={styles.perfLabel}>MIN FPS</Text>
+                <Text style={styles.perfLabel}>{t.minFps}</Text>
                 <Text style={[styles.perfValue, fps.minFps < 30 ? styles.perfValueError : styles.perfValueGood]}>{fps.minFps}</Text>
               </View>
               <View style={styles.perfRow}>
-                <Text style={styles.perfLabel}>MAX FPS</Text>
+                <Text style={styles.perfLabel}>{t.maxFps}</Text>
                 <Text style={styles.perfValue}>{fps.maxFps}</Text>
               </View>
               <View style={styles.perfRow}>
-                <Text style={styles.perfLabel}>DROPPED FRAMES</Text>
+                <Text style={styles.perfLabel}>{t.droppedFrames}</Text>
                 <Text style={[styles.perfValue, fps.droppedFrames > 10 ? styles.perfValueWarning : styles.perfValueGood]}>{fps.droppedFrames}</Text>
               </View>
             </View>
 
             <View style={styles.perfCard}>
-              <Text style={styles.perfLabel}>FPS HISTORY (LAST 60 SECONDS)</Text>
+              <Text style={styles.perfLabel}>{t.fpsHistory}</Text>
               <View style={{ height: 80, flexDirection: 'row', alignItems: 'flex-end', gap: 1, marginTop: 12 }}>
                 {Array.from({ length: Math.min(60, fps.fps) }, (_, i) => {
                   const h = Math.max(4, (fps.averageFps / 60) * 80);
@@ -818,7 +806,7 @@ export const DebugMonitor = ({
         {!fps && (
           <View style={styles.perfCard}>
             <Text style={[styles.perfLabel, { textAlign: 'center', marginVertical: 20 }]}>
-              Tap the toggle above to start monitoring FPS
+              {t.fpsEmpty}
             </Text>
           </View>
         )}
@@ -836,9 +824,9 @@ export const DebugMonitor = ({
         <View style={styles.wsContainer}>
           <View style={[styles.perfCard, { alignItems: 'center', padding: 40 }]}>
             <Text style={{ fontSize: 32, marginBottom: 12 }}>🔌</Text>
-            <Text style={[styles.perfLabel, { textAlign: 'center', marginBottom: 4 }]}>NO WEBSOCKET ACTIVITY</Text>
+            <Text style={[styles.perfLabel, { textAlign: 'center', marginBottom: 4 }]}>{t.noWebSocketActivity}</Text>
             <Text style={[styles.perfLabel, { color: C.textSubtle, fontSize: 10, textAlign: 'center' }]}>
-              WebSocket connections are automatically intercepted
+              {t.wsSubtitle}
             </Text>
           </View>
         </View>
@@ -858,7 +846,7 @@ export const DebugMonitor = ({
               <View style={styles.wsHeader}>
                 <View style={[styles.wsBadge, { backgroundColor: badgeColor + '20' }]}>
                   <Text style={[styles.wsBadgeText, { color: badgeColor }]}>
-                    {isOpen ? 'OPEN' : isClose ? 'CLOSE' : isError ? 'ERROR' : 'MSG'}
+                    {isOpen ? t.wsOpen : isClose ? t.wsClose : isError ? t.wsError : t.wsMsg}
                   </Text>
                 </View>
                 <Text style={styles.wsUrl} numberOfLines={1}>{log.url}</Text>
@@ -888,29 +876,29 @@ export const DebugMonitor = ({
     const info = deviceInfo;
     return (
       <View>
-        <Text style={styles.deviceSectionTitle}>DEVICE</Text>
+        <Text style={styles.deviceSectionTitle}>{t.device}</Text>
         <View style={styles.deviceRow}>
-          <Text style={styles.deviceLabel}>Platform</Text>
+          <Text style={styles.deviceLabel}>{t.platform}</Text>
           <Text style={styles.deviceValue}>{info.platform} {info.osVersion}</Text>
         </View>
         <View style={styles.deviceRow}>
-          <Text style={styles.deviceLabel}>Model</Text>
+          <Text style={styles.deviceLabel}>{t.model}</Text>
           <Text style={styles.deviceValue}>{info.deviceName}</Text>
         </View>
         <View style={styles.deviceRow}>
-          <Text style={styles.deviceLabel}>Screen</Text>
+          <Text style={styles.deviceLabel}>{t.screen}</Text>
           <Text style={styles.deviceValue}>{info.screenWidth}x{info.screenHeight} @{info.screenScale}x</Text>
         </View>
-        <Text style={[styles.deviceSectionTitle, { marginTop: 24 }]}>APPLICATION</Text>
+        <Text style={[styles.deviceSectionTitle, { marginTop: 24 }]}>{t.application}</Text>
         {info.appVersion && (
           <View style={styles.deviceRow}>
-            <Text style={styles.deviceLabel}>App Version</Text>
+            <Text style={styles.deviceLabel}>{t.appVersion}</Text>
             <Text style={styles.deviceValue}>{info.appVersion}</Text>
           </View>
         )}
         {info.buildVersion && (
           <View style={styles.deviceRow}>
-            <Text style={styles.deviceLabel}>Build Version</Text>
+            <Text style={styles.deviceLabel}>{t.buildVersion}</Text>
             <Text style={styles.deviceValue}>{info.buildVersion}</Text>
           </View>
         )}
@@ -929,7 +917,7 @@ export const DebugMonitor = ({
               <View style={styles.headerLogo}>
                 <Text style={styles.headerLogoText}>N</Text>
               </View>
-              <Text style={styles.headerTitle}>Monitor</Text>
+              <Text style={styles.headerTitle}>{headerTitle || t.monitor}</Text>
               <View style={styles.headerCount}>
                 <Text style={{ color: C.textDim, fontSize: 10, fontWeight: '700' }}>
                   {logs.length}
@@ -958,7 +946,7 @@ export const DebugMonitor = ({
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.tabScroll}
           >
-            {(['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'SETTINGS'] as TabType[]).map((tab) => (
+            {(customTabs || ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'] as TabType[]).map((tab) => (
               <TouchableOpacity
                 key={tab}
                 style={styles.tabItem}
@@ -972,10 +960,12 @@ export const DebugMonitor = ({
                       : tab === 'LOGS'
                         ? t.logs
                         : tab === 'WEBSOCKET'
-                          ? 'WS'
+                          ? t.ws
                           : tab === 'PERFORMANCE'
-                            ? 'FPS'
-                            : t.settings}
+                            ? t.fps
+                            : tab === 'STORE'
+                              ? t.store
+                              : t.settings}
                   <Text style={styles.tabBadge}>
                     {tab !== 'SETTINGS' ? ` ${(tabCounts as any)[tab]}` : ''}
                   </Text>
@@ -992,7 +982,7 @@ export const DebugMonitor = ({
               <View style={styles.searchBox}>
                 <TextInput
                   style={styles.searchInput}
-                  placeholder={t.search}
+                  placeholder={searchPlaceholder || t.search}
                   placeholderTextColor={C.textDim}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -1013,7 +1003,7 @@ export const DebugMonitor = ({
                     onPress={() => setFilterStatus(s)}
                   >
                     <Text style={[styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]}>
-                      {s === 'ALL' ? 'All' : s === 'OK' ? '2xx/3xx' : '4xx/5xx'}
+                      {s === 'ALL' ? t.allFilter : s === 'OK' ? t.success2xx3xx : t.error4xx5xx}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -1028,6 +1018,8 @@ export const DebugMonitor = ({
           renderPerformance()
         ) : activeTab === 'WEBSOCKET' ? (
           renderWebSocket()
+        ) : activeTab === 'STORE' ? (
+          renderStoreLogs()
         ) : (
           <FlatList
             data={filteredLogs}
@@ -1038,7 +1030,7 @@ export const DebugMonitor = ({
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyIcon}>💬</Text>
                 <Text style={styles.emptyText}>{t.empty}</Text>
-                <Text style={styles.emptySubText}>Requests will appear here automatically</Text>
+                <Text style={styles.emptySubText}>{t.emptySubtitle}</Text>
               </View>
             }
           />
@@ -1074,11 +1066,13 @@ export const DebugMonitor = ({
                         isSelectedConsoleError && { color: C.error }
                       ]}
                     >
-                      {selectedLog?.type === 'info'
-                        ? isSelectedConsoleError
-                          ? 'CONSOLE ERROR'
-                          : (t.logs || '').toUpperCase()
-                        : `${selectedLog?.durationMs ?? 0}ms, ${selectedLog?.size || '0.00kb'}`}
+                      {selectedLog?.type === 'action'
+                        ? `[${selectedLog?.stateData?.storeName || t.store}] ${selectedLog?.stateData?.actionType || t.action}`
+                        : selectedLog?.type === 'info'
+                          ? isSelectedConsoleError
+                            ? t.consoleError
+                            : (t.logs || '').toUpperCase()
+                          : `${selectedLog?.durationMs ?? 0}${t.ms}, ${selectedLog?.size || `0.00${t.kb}`}`}
                     </Text>
                     <TouchableOpacity style={styles.detailMenu} onPress={() => setShowMenu(!showMenu)}>
                       <Text style={styles.detailMenuText}>⋮</Text>
@@ -1094,7 +1088,7 @@ export const DebugMonitor = ({
                           setShowMenu(false);
                         }}
                       >
-                        <Text style={styles.detailDropdownText}>Share Entry</Text>
+                        <Text style={styles.detailDropdownText}>{t.shareEntry}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.detailDropdownItem}
@@ -1103,26 +1097,39 @@ export const DebugMonitor = ({
                             const curl = generateCurl(selectedLog);
                             Share.share({
                               message: curl || JSON.stringify(selectedLog, null, 2),
-                              title: 'cURL Command',
+                              title: t.curlCommand,
                             });
                           }
                           setShowMenu(false);
                         }}
                       >
-                        <Text style={styles.detailDropdownText}>Share cURL</Text>
+                        <Text style={styles.detailDropdownText}>{t.shareCurl}</Text>
                       </TouchableOpacity>
+                      {customActions?.map((action, i) => (
+                        <TouchableOpacity
+                          key={`ca-${i}`}
+                          style={styles.detailDropdownItem}
+                          onPress={() => {
+                            if (selectedLog) action.onPress(selectedLog);
+                            setShowMenu(false);
+                          }}
+                        >
+                          <Text style={styles.detailDropdownText}>{action.label}</Text>
+                        </TouchableOpacity>
+                      ))}
                       <TouchableOpacity
                         style={[styles.detailDropdownItem, { borderBottomWidth: 0 }]}
                         onPress={() => setShowMenu(false)}
                       >
-                        <Text style={styles.detailDropdownText}>Close</Text>
+                        <Text style={styles.detailDropdownText}>{t.closeMenu}</Text>
                       </TouchableOpacity>
                     </View>
                   ) : null}
 
                   {selectedLog?.type !== 'info' &&
                    selectedLog?.type !== 'websocket' &&
-                   selectedLog?.type !== 'performance' ? (
+                   selectedLog?.type !== 'performance' &&
+                   selectedLog?.type !== 'action' ? (
                     <View style={styles.detailTabs}>
                       <TouchableOpacity
                         style={[
@@ -1160,16 +1167,59 @@ export const DebugMonitor = ({
                   ) : null}
 
                 <ScrollView style={styles.detailContent} showsVerticalScrollIndicator={false}>
-                  {selectedLog?.type === 'info' || selectedLog?.type === 'websocket' || selectedLog?.type === 'performance' ? (
+                  {selectedLog?.type === 'info' || selectedLog?.type === 'websocket' || selectedLog?.type === 'performance' || selectedLog?.type === 'action' ? (
                     <>
-                      <Section themeColors={C} selectable label={selectedLog?.type === 'websocket' ? 'WEBSOCKET EVENT' : selectedLog?.type === 'performance' ? 'PERFORMANCE DATA' : 'LOG MESSAGE'} value={selectedLog?.message} />
-                      {selectedLog?.url ? (
-                        <Section themeColors={C} selectable label="URL" value={selectedLog.url} />
-                      ) : null}
-                      <Section themeColors={C} label="DATA" json={selectedLog?.requestData} />
-                      {selectedLog?.type === 'performance' && selectedLog?.durationMs ? (
-                        <Section themeColors={C} label="FPS" value={String(selectedLog.durationMs)} />
-                      ) : null}
+                      {selectedLog?.type === 'action' && selectedLog?.stateData ? (
+                        <>
+                          <Section themeColors={C} label={t.actionType} value={selectedLog.stateData.actionType || '-'} />
+                          <Section themeColors={C} label={t.actionPayload} json={selectedLog.stateData.actionPayload} />
+                          {selectedLog.stateData.diff ? (
+                            Object.keys(selectedLog.stateData.diff).length > 0 ? (
+                              <>
+                                <Text style={[styles.sectionLabel, { marginTop: 16, marginBottom: 8 }]}>{t.changedKeys}</Text>
+                                {Object.entries(selectedLog.stateData.diff).map(([key, val]) => (
+                                  <View key={key} style={styles.sectionBox}>
+                                    <Text style={styles.sectionLabel}>{key}</Text>
+                                    {val.prev !== undefined ? (
+                                      <Text style={[styles.sectionLabel, { color: C.textDim, fontSize: 10 }]}>{t.prevState}</Text>
+                                    ) : null}
+                                    {val.prev !== undefined ? (
+                                      <View style={styles.jsonBox}>
+                                        <Text selectable style={styles.jsonText}>
+                                          {JSON.stringify(val.prev, null, 2)}
+                                        </Text>
+                                      </View>
+                                    ) : null}
+                                    {val.next !== undefined ? (
+                                      <Text style={[styles.sectionLabel, { color: C.textDim, fontSize: 10, marginTop: 8 }]}>{t.nextState}</Text>
+                                    ) : null}
+                                    {val.next !== undefined ? (
+                                      <View style={styles.jsonBox}>
+                                        <Text selectable style={styles.jsonText}>
+                                          {JSON.stringify(val.next, null, 2)}
+                                        </Text>
+                                      </View>
+                                    ) : null}
+                                  </View>
+                                ))}
+                              </>
+                            ) : null
+                          ) : selectedLog.stateData.snapshot ? (
+                            <Section themeColors={C} label={t.fullState} json={selectedLog.stateData.snapshot} />
+                          ) : null}
+                        </>
+                      ) : (
+                        <>
+                          <Section themeColors={C} selectable label={selectedLog?.type === 'websocket' ? t.websocketEvent : selectedLog?.type === 'performance' ? t.performanceData : t.logMessage} value={selectedLog?.message} />
+                          {selectedLog?.url ? (
+                            <Section themeColors={C} selectable label={t.url} value={selectedLog.url} />
+                          ) : null}
+                          <Section themeColors={C} label={t.data} json={selectedLog?.requestData} />
+                          {selectedLog?.type === 'performance' && selectedLog?.durationMs ? (
+                            <Section themeColors={C} label={t.fps} value={String(selectedLog.durationMs)} />
+                          ) : null}
+                        </>
+                      )}
                     </>
                   ) : detailTab === 'REQUEST' ? (
                     <>
@@ -1191,7 +1241,7 @@ export const DebugMonitor = ({
                     <>
                       <Section
                         themeColors={C}
-                        label={t.status}
+                        label={t.statusCode}
                         value={selectedLog?.status?.toString()}
                         color={
                           selectedLog?.status && selectedLog.status >= 400

@@ -1,56 +1,60 @@
 # Examples for `@mspvirajpatel/react-native-network-monitor`
 
-These example apps show how to integrate the library in real React Native projects.
-
-## Example apps
-
-- `expo-go` — Expo Go managed workflow
-- `expo-cng` — Expo Router / CNG example with `DebugTrigger`
-- `expo-cli` — React Native CLI sample (if present)
+- `expo-demo` — comprehensive demo with live-syncing prop controls for all 16+ `DebugTrigger` props, network interception, WebSocket, console, store monitoring, performance, error boundary, programmatic API, and a 20-item recent action log.
 
 ## Quick Start
 
 From the repo root:
 
 ```bash
-cd /Users/viraj/Documents/Project/package/network-monitor
-yarn install
+npm install
 ```
 
-Then open an example:
+Then run the demo:
 
 ```bash
-cd examples/expo-go
-yarn start
+cd examples/expo-demo
+npx expo start
 ```
-
-Or for the CNG example:
-
-```bash
-cd examples/expo-cng
-yarn start
-```
-
-## How to use the demo
-
-1. Run the app in Expo Go or dev client.
-2. Tap the screen 5 times to open the debug monitor.
-3. Enter password `2026`.
-4. Use the monitor to inspect network requests, logs, and environment URLs.
 
 ## What to try
 
-- Press the Fetch button to generate a network request
-- Open the debug monitor and inspect request/response headers
-- Switch between environment URLs (prod/test/local)
-- Export logs to JSON for debugging
+1. Run the app — you'll see a scrollable UI with prop controls at the top.
+2. Change any toggle (e.g. `passwordOptional`, `theme`, `language`) — it immediately syncs to the live `DebugTrigger` wrapping the app.
+3. Tap the **floating debug button** (or shake) to open the monitor with your customised props applied.
+4. Entry password: `2026`.
+5. Explore all 7 tabs: ALL · NETWORK · LOGS · WEBSOCKET · PERFORMANCE · STORE · SETTINGS.
+6. Use the action buttons to generate network requests (GET, POST, XHR, 404), console logs, WebSocket messages, store state updates, and performance data, then inspect everything in the debug monitor.
 
-## Notes
+### Customisation controls in the demo
 
-- `expo-go` is the managed Expo experience.
-- `expo-cng` shows the same library integration in an Expo Router / CNG-friendly project.
-- These examples use the same `DebugTrigger` wrapper and password flow.
+The demo lets you toggle every `DebugTrigger` prop in real time:
 
-## License
+| Control | Prop | Effect |
+|---------|------|--------|
+| `passwordOptional` | skips password prompt | Toggle |
+| `passwordFrequency` | how often password is required | all-time / per-install / app-active |
+| `enableTapGesture` | tap-to-open trigger | Toggle |
+| `clicksNeeded` | number of taps required | 3 / 5 / 7 |
+| `checkAccess` | whether access check passes | Toggle |
+| `floatingButtonMargin` | margin from screen edges | 8px / 16px / 32px |
+| `theme` | colour scheme | light / dark / auto |
+| `language` | UI language | 13 languages + auto |
+| `env / isDemo` | environment mode | prod / demo |
+| `customColors` | overrides primary/secondary/success/accent | Toggle (pink/green) |
+| `custom floating button` | replaces button text with custom content | Toggle |
+| `maxLogs` | limit displayed log entries | All / 10 / 50 / 200 |
+| `headerTitle` | custom monitor header | Toggle "🛠 CUSTOM" |
+| `searchPlaceholder` | custom search text | Toggle "Filter..." |
 
-MIT
+### State/store monitoring
+
+The demo creates a simple pub/sub store (`appStore`) with `counter`, `features`, and `user` state, then connects it via `subscribeToState()` in diff mode. Click **"Store +counter"** or **"Store toggleBeta"** to fire state actions visible in the STORE tab.
+
+### Programmatic API
+
+Use **"Open"** and **"Close"** buttons to call `openDebugger()` / `closeDebugger()` from the `useDebugger()` hook — the same hook your app code can import.
+
+## Note
+
+`expo-demo` uses `@mspvirajpatel/react-native-network-monitor` resolved via npm workspace symlink from the monorepo root.

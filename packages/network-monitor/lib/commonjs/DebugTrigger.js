@@ -17,47 +17,10 @@ var _WebSocketMonitor = require("./WebSocketMonitor");
 var _PerformanceMonitor = require("./PerformanceMonitor");
 var _ErrorBoundary = require("./ErrorBoundary");
 var _PersistenceManager = require("./PersistenceManager");
+var _translations = require("./translations");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }
 function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function (e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, default: e }; if (null === e || "object" != typeof e && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]); return f; })(e, t); }
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); } /* eslint-disable react-native/no-inline-styles */ /* eslint-disable react-hooks/exhaustive-deps */ /* eslint-disable @typescript-eslint/no-unused-vars */
-const TRANSLATIONS = {
-  az: {
-    login: "Debug Girişi",
-    clicks: n => `Ardıcıl ${n} klik aşkar edildi`,
-    passPlaceholder: "Şifrəni daxil edin",
-    cancel: "Ləğv et",
-    confirm: "Təsdiqlə",
-    error: "Xəta",
-    wrongPass: "Şifrə yanlışdır"
-  },
-  en: {
-    login: "Debug Login",
-    clicks: n => `${n} clicks detected`,
-    passPlaceholder: "Enter password",
-    cancel: "Cancel",
-    confirm: "Confirm",
-    error: "Error",
-    wrongPass: "Wrong password"
-  },
-  ru: {
-    login: "Вход",
-    clicks: n => `Обнаружено ${n} кликов`,
-    passPlaceholder: "Введите пароль",
-    cancel: "Отмена",
-    confirm: "Ок",
-    error: "Ошибка",
-    wrongPass: "Неверный пароль"
-  },
-  tr: {
-    login: "Giriş",
-    clicks: n => `${n} tıklama tespit edildi`,
-    passPlaceholder: "Şifreyi giriniz",
-    cancel: "İptal",
-    confirm: "Onayla",
-    error: "Hata",
-    wrongPass: "Yanlış şifre"
-  }
-};
 const COLORS = {
   background: "#0F172A",
   surface: "#1E293B",
@@ -156,22 +119,6 @@ const styles = _reactNative.StyleSheet.create({
     textAlign: "center"
   }
 });
-
-/**
- * getDeviceLanguage
- * Attempts to determine the device's current language setting, with fallbacks and error handling.
- * @returns A string representing the device's language, defaulting to 'en' if it cannot be determined or is unsupported.
- */
-const getDeviceLanguage = () => {
-  try {
-    const locale = _reactNative.Platform.OS === "ios" ? _reactNative.NativeModules.SettingsManager?.settings?.AppleLocale || _reactNative.NativeModules.SettingsManager?.settings?.AppleLanguages?.[0] : _reactNative.NativeModules.I18nManager?.localeIdentifier;
-    const lang = locale?.split(/[-_]/)[0] || "en";
-    if (TRANSLATIONS[lang]) return lang;
-  } catch (e) {
-    console.warn("Error getting device language, defaulting to English:", e);
-  }
-  return "en";
-};
 let isAppActiveAuthenticated = false;
 
 /**
@@ -193,7 +140,7 @@ let isAppActiveAuthenticated = false;
  * @param testUrl - Test base URL
  * @param enabled - Whether the trigger is enabled
  * @param checkAccess - Optional function to perform additional access checks before showing the monitor
- * @param language - Language for the monitor UI ('az', 'en', 'ru', 'tr', or 'auto' to detect from device)
+ * @param language - Language for the monitor UI (use 'auto' to detect from device)
  * @returns The wrapped children and the debug monitor when triggered
  */
 const DebugTrigger = ({
@@ -214,7 +161,11 @@ const DebugTrigger = ({
   floatingButtonMargin = 16,
   checkAccess,
   language = "auto",
-  theme = "auto"
+  theme = "auto",
+  colors: customColors,
+  onOpen,
+  onClose: onCloseProp,
+  floatingButtonContent
 }) => {
   const systemScheme = (0, _reactNative.useColorScheme)();
   const insets = (0, _reactNativeSafeAreaContext.useSafeAreaInsets)();
@@ -232,8 +183,15 @@ const DebugTrigger = ({
   const [showFloatingButton, setShowFloatingButton] = (0, _react.useState)(false);
   const [inputPassword, setInputPassword] = (0, _react.useState)("");
   const timerRef = (0, _react.useRef)(null);
-  const activeLang = language === "auto" ? getDeviceLanguage() : language;
-  const t = TRANSLATIONS[activeLang] || TRANSLATIONS.en;
+  const activeLang = (0, _translations.resolveLanguage)(language);
+  const t = _translations.TRANSLATIONS[activeLang] || _translations.TRANSLATIONS.en;
+  const prevShowMonitor = (0, _react.useRef)(false);
+  (0, _react.useEffect)(() => {
+    if (showMonitor && !prevShowMonitor.current) {
+      onOpen?.();
+    }
+    prevShowMonitor.current = showMonitor;
+  }, [showMonitor, onOpen]);
   (0, _react.useEffect)(() => {
     (0, _NetworkMonitor.setupNetworkMonitor)();
     (0, _ConsoleMonitor.setupConsoleMonitor)();
@@ -558,7 +516,11 @@ const DebugTrigger = ({
     testUrl: testUrl,
     language: language,
     theme: theme,
-    onClose: () => setShowMonitor(false),
+    colors: customColors,
+    onClose: () => {
+      setShowMonitor(false);
+      onCloseProp?.();
+    },
     onBaseUrlChange: onBaseUrlChange,
     onExitDebugMode: () => setShowFloatingButton(false)
   }))), /*#__PURE__*/_react.default.createElement(_reactNative.Modal, {
@@ -650,9 +612,9 @@ const DebugTrigger = ({
       w: e.nativeEvent.layout.width,
       h: e.nativeEvent.layout.height
     })
-  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+  }, floatingButtonContent || /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
     style: styles.floatingButtonText
-  }, "DEBUG")))));
+  }, t.debug)))));
 };
 exports.DebugTrigger = DebugTrigger;
 //# sourceMappingURL=DebugTrigger.js.map
