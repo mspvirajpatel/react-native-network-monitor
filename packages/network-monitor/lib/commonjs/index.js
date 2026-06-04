@@ -159,6 +159,12 @@ Object.defineProperty(exports, "saveReportToText", {
     return _FileExporter.saveReportToText;
   }
 });
+Object.defineProperty(exports, "setNetworkConfig", {
+  enumerable: true,
+  get: function () {
+    return _NetworkMonitor.setNetworkConfig;
+  }
+});
 Object.defineProperty(exports, "setStorageAdapter", {
   enumerable: true,
   get: function () {

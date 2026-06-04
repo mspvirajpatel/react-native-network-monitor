@@ -25,7 +25,7 @@ import { setupConsoleMonitor } from "./ConsoleMonitor";
 import { DebugMonitor } from "./DebugMonitor";
 import { Logger } from "./Logger";
 import DebugContext from "./DebugContext";
-import { setupNetworkMonitor } from "./NetworkMonitor";
+import { setupNetworkMonitor, type NetworkConfig } from "./NetworkMonitor";
 import { setupWebSocketMonitor } from "./WebSocketMonitor";
 import { startPerformanceMonitor } from "./PerformanceMonitor";
 import { ErrorBoundary, setupGlobalErrorHandlers } from "./ErrorBoundary";
@@ -60,6 +60,7 @@ export interface DebugTriggerProps {
   onOpen?: () => void;
   onClose?: () => void;
   floatingButtonContent?: ReactNode;
+  networkConfig?: NetworkConfig;
 }
 
 const COLORS = {
@@ -197,6 +198,7 @@ export const DebugTrigger = ({
   onOpen,
   onClose: onCloseProp,
   floatingButtonContent,
+  networkConfig,
 }: DebugTriggerProps) => {
   const systemScheme = useColorScheme();
   const insets = useSafeAreaInsets();
@@ -224,7 +226,7 @@ export const DebugTrigger = ({
   }, [showMonitor, onOpen]);
 
   useEffect(() => {
-    setupNetworkMonitor();
+    setupNetworkMonitor(networkConfig);
     setupConsoleMonitor();
     setupWebSocketMonitor();
     setupGlobalErrorHandlers();

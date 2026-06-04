@@ -1,5 +1,5 @@
 // Core monitoring utilities
-export { setupNetworkMonitor, getRedirectedUrl, isInternalUrl } from './NetworkMonitor';
+export { setupNetworkMonitor, getRedirectedUrl, isInternalUrl, setNetworkConfig, type NetworkConfig } from './NetworkMonitor';
 export { setupConsoleMonitor } from './ConsoleMonitor';
 export { setupWebSocketMonitor } from './WebSocketMonitor';
 

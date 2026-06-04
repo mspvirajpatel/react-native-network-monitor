@@ -19,6 +19,24 @@ const getGlobalXMLHttpRequest = () => {
   }
   return XMLHttpRequest;
 };
+const _config = {
+  skipRedirectHosts: ['login.microsoftonline.com', 'login.windows.net', 'b2clogin.com', 'graph.microsoft.com', 'accounts.google.com', 'appleid.apple.com'],
+  baseUrlMap: undefined
+};
+
+/**
+ * Update the global network monitor config.
+ * Call this before any network requests happen (or at the same time as
+ * `setupNetworkMonitor`).
+ */
+const setNetworkConfig = config => {
+  if (config.skipRedirectHosts !== undefined) {
+    _config.skipRedirectHosts = config.skipRedirectHosts;
+  }
+  if (config.baseUrlMap !== undefined) {
+    _config.baseUrlMap = config.baseUrlMap;
+  }
+};
 export const isInternalUrl = originalUrl => {
   return originalUrl.includes('localhost:8081') || originalUrl.includes('10.0.2.2:8081') || originalUrl.includes('127.0.0.1') || originalUrl.includes('/symbolicate') || originalUrl.includes('.bundle') || originalUrl.includes('.hot-update');
 };
@@ -42,7 +60,23 @@ const getRedirectedUrl = originalUrl => {
       return base.origin + originalUrl;
     }
     const original = new URL(originalUrl);
+
+    // Skip redirect for known third-party / identity hosts.
+    if (_config.skipRedirectHosts && _config.skipRedirectHosts.some(h => original.hostname.endsWith(h))) {
+      return originalUrl;
+    }
     const replacement = new URL(baseUrl);
+
+    // If a baseUrlMap is provided, try to match the original hostname.
+    if (_config.baseUrlMap) {
+      for (const entry of _config.baseUrlMap) {
+        if (original.hostname.includes(entry.from)) {
+          const replaced = new URL(originalUrl);
+          replaced.hostname = entry.to;
+          return replaced.toString();
+        }
+      }
+    }
     return originalUrl.replace(original.origin, replacement.origin);
   } catch (e) {
     return originalUrl;
@@ -52,7 +86,7 @@ const getRedirectedUrl = originalUrl => {
 /**
  * Export for testing.
  */
-export { getRedirectedUrl };
+export { getRedirectedUrl, setNetworkConfig };
 
 /**
  * setupNetworkMonitor
@@ -63,9 +97,12 @@ export { getRedirectedUrl };
  * Note: This mutates global browser/JS runtime network methods and should
  * only be called once during app initialization.
  */
-export const setupNetworkMonitor = () => {
+export const setupNetworkMonitor = config => {
   if (Logger.isNetworkPatched) return;
   Logger.isNetworkPatched = true;
+  if (config) {
+    setNetworkConfig(config);
+  }
   const globalFetch = getGlobalFetch();
   if (globalFetch) {
     const originalFetch = globalFetch;

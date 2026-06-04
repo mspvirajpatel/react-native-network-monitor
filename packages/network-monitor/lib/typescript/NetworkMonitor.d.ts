@@ -1,3 +1,16 @@
+export interface NetworkConfig {
+    skipRedirectHosts?: string[];
+    baseUrlMap?: {
+        from: string;
+        to: string;
+    }[];
+}
+/**
+ * Update the global network monitor config.
+ * Call this before any network requests happen (or at the same time as
+ * `setupNetworkMonitor`).
+ */
+declare const setNetworkConfig: (config: NetworkConfig) => void;
 export declare const isInternalUrl: (originalUrl: string) => boolean;
 /**
  * getRedirectedUrl
@@ -12,7 +25,7 @@ declare const getRedirectedUrl: (originalUrl: string) => string;
 /**
  * Export for testing.
  */
-export { getRedirectedUrl };
+export { getRedirectedUrl, setNetworkConfig };
 /**
  * setupNetworkMonitor
  *
@@ -22,5 +35,5 @@ export { getRedirectedUrl };
  * Note: This mutates global browser/JS runtime network methods and should
  * only be called once during app initialization.
  */
-export declare const setupNetworkMonitor: () => void;
+export declare const setupNetworkMonitor: (config?: NetworkConfig) => void;
 //# sourceMappingURL=NetworkMonitor.d.ts.map

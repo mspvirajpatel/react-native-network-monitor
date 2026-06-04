@@ -160,7 +160,8 @@ export const DebugTrigger = ({
   colors: customColors,
   onOpen,
   onClose: onCloseProp,
-  floatingButtonContent
+  floatingButtonContent,
+  networkConfig
 }) => {
   const systemScheme = useColorScheme();
   const insets = useSafeAreaInsets();
@@ -188,7 +189,7 @@ export const DebugTrigger = ({
     prevShowMonitor.current = showMonitor;
   }, [showMonitor, onOpen]);
   useEffect(() => {
-    setupNetworkMonitor();
+    setupNetworkMonitor(networkConfig);
     setupConsoleMonitor();
     setupWebSocketMonitor();
     setupGlobalErrorHandlers();

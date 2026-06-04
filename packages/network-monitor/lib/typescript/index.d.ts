@@ -1,4 +1,4 @@
-export { setupNetworkMonitor, getRedirectedUrl, isInternalUrl } from './NetworkMonitor';
+export { setupNetworkMonitor, getRedirectedUrl, isInternalUrl, setNetworkConfig, type NetworkConfig } from './NetworkMonitor';
 export { setupConsoleMonitor } from './ConsoleMonitor';
 export { setupWebSocketMonitor } from './WebSocketMonitor';
 export { startPerformanceMonitor, stopPerformanceMonitor, subscribeToFps, isPerformanceMonitorRunning, type FpsStats } from './PerformanceMonitor';

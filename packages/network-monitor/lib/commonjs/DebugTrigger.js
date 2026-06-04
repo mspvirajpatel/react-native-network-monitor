@@ -165,7 +165,8 @@ const DebugTrigger = ({
   colors: customColors,
   onOpen,
   onClose: onCloseProp,
-  floatingButtonContent
+  floatingButtonContent,
+  networkConfig
 }) => {
   const systemScheme = (0, _reactNative.useColorScheme)();
   const insets = (0, _reactNativeSafeAreaContext.useSafeAreaInsets)();
@@ -193,7 +194,7 @@ const DebugTrigger = ({
     prevShowMonitor.current = showMonitor;
   }, [showMonitor, onOpen]);
   (0, _react.useEffect)(() => {
-    (0, _NetworkMonitor.setupNetworkMonitor)();
+    (0, _NetworkMonitor.setupNetworkMonitor)(networkConfig);
     (0, _ConsoleMonitor.setupConsoleMonitor)();
     (0, _WebSocketMonitor.setupWebSocketMonitor)();
     (0, _ErrorBoundary.setupGlobalErrorHandlers)();

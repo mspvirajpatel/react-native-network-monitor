@@ -1,4 +1,5 @@
 import React, { ReactNode } from "react";
+import { type NetworkConfig } from "./NetworkMonitor";
 import { type ThemeColors } from "./DebugMonitorStyles";
 import { type LanguageCode } from "./translations";
 export interface DebugTriggerProps {
@@ -27,6 +28,7 @@ export interface DebugTriggerProps {
     onOpen?: () => void;
     onClose?: () => void;
     floatingButtonContent?: ReactNode;
+    networkConfig?: NetworkConfig;
 }
 /**
  * DebugTrigger
@@ -50,5 +52,5 @@ export interface DebugTriggerProps {
  * @param language - Language for the monitor UI (use 'auto' to detect from device)
  * @returns The wrapped children and the debug monitor when triggered
  */
-export declare const DebugTrigger: ({ children, password, passwordFrequency, passwordOptional, enableShake, clicksNeeded, isDemo, onEnvChange, onBaseUrlChange, baseUrls, prodUrl, testUrl, enabled, enableTapGesture, floatingButtonMargin, checkAccess, language, theme, colors: customColors, onOpen, onClose: onCloseProp, floatingButtonContent, }: DebugTriggerProps) => React.JSX.Element;
+export declare const DebugTrigger: ({ children, password, passwordFrequency, passwordOptional, enableShake, clicksNeeded, isDemo, onEnvChange, onBaseUrlChange, baseUrls, prodUrl, testUrl, enabled, enableTapGesture, floatingButtonMargin, checkAccess, language, theme, colors: customColors, onOpen, onClose: onCloseProp, floatingButtonContent, networkConfig, }: DebugTriggerProps) => React.JSX.Element;
 //# sourceMappingURL=DebugTrigger.d.ts.map
