@@ -19,7 +19,12 @@ interface DebugMonitorProps {
     language?: LanguageCode;
     theme?: 'light' | 'dark' | 'auto';
     colors?: Partial<ThemeColors>;
-    tabs?: TabType[];
+    features?: {
+        network?: boolean;
+        console?: boolean;
+        websocket?: boolean;
+        performance?: boolean;
+    };
     headerTitle?: string;
     searchPlaceholder?: string;
     maxLogs?: number;
@@ -39,6 +44,6 @@ export type DetailTab = 'REQUEST' | 'RESPONSE';
  * @param props - Props for DebugMonitor (see `DebugMonitorProps`)
  * @returns JSX.Element
  */
-export declare const DebugMonitor: ({ onClose, envConfig, onBaseUrlChange, baseUrls, prodUrl, testUrl, language, theme, colors: customColors, tabs: customTabs, headerTitle, searchPlaceholder, maxLogs, customActions }: DebugMonitorProps) => React.JSX.Element;
+export declare const DebugMonitor: ({ onClose, envConfig, onBaseUrlChange, baseUrls, prodUrl, testUrl, language, theme, colors: customColors, features: featuresProp, headerTitle, searchPlaceholder, maxLogs, customActions }: DebugMonitorProps) => React.JSX.Element;
 export {};
 //# sourceMappingURL=DebugMonitor.d.ts.map

@@ -166,7 +166,8 @@ const DebugTrigger = ({
   onOpen,
   onClose: onCloseProp,
   floatingButtonContent,
-  networkConfig
+  networkConfig,
+  features: featuresProp
 }) => {
   const systemScheme = (0, _reactNative.useColorScheme)();
   const insets = (0, _reactNativeSafeAreaContext.useSafeAreaInsets)();
@@ -178,6 +179,15 @@ const DebugTrigger = ({
   };
   const effectiveTheme = theme === "auto" ? systemScheme === "light" ? "light" : "dark" : theme;
   const isLight = effectiveTheme === "light";
+  const features = {
+    network: true,
+    console: true,
+    websocket: true,
+    errorBoundary: true,
+    performance: true,
+    persistence: true,
+    ...featuresProp
+  };
   const [clicks, setClicks] = (0, _react.useState)(0);
   const [showPasswordModal, setShowPasswordModal] = (0, _react.useState)(false);
   const [showMonitor, setShowMonitor] = (0, _react.useState)(false);
@@ -194,12 +204,12 @@ const DebugTrigger = ({
     prevShowMonitor.current = showMonitor;
   }, [showMonitor, onOpen]);
   (0, _react.useEffect)(() => {
-    (0, _NetworkMonitor.setupNetworkMonitor)(networkConfig);
-    (0, _ConsoleMonitor.setupConsoleMonitor)();
-    (0, _WebSocketMonitor.setupWebSocketMonitor)();
-    (0, _ErrorBoundary.setupGlobalErrorHandlers)();
-    (0, _PerformanceMonitor.startPerformanceMonitor)();
-    (0, _PersistenceManager.startPersistence)(15000);
+    if (features.network) (0, _NetworkMonitor.setupNetworkMonitor)(networkConfig);
+    if (features.console) (0, _ConsoleMonitor.setupConsoleMonitor)();
+    if (features.websocket) (0, _WebSocketMonitor.setupWebSocketMonitor)();
+    if (features.errorBoundary) (0, _ErrorBoundary.setupGlobalErrorHandlers)();
+    if (features.performance) (0, _PerformanceMonitor.startPerformanceMonitor)();
+    if (features.persistence) (0, _PersistenceManager.startPersistence)(15000);
     (0, _PersistenceManager.restoreLogs)().then(savedLogs => {
       if (savedLogs.length > 0) {
         savedLogs.forEach(log => {
@@ -518,6 +528,7 @@ const DebugTrigger = ({
     language: language,
     theme: theme,
     colors: customColors,
+    features: features,
     onClose: () => {
       setShowMonitor(false);
       onCloseProp?.();

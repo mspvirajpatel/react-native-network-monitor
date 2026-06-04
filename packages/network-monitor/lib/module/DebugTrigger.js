@@ -161,7 +161,8 @@ export const DebugTrigger = ({
   onOpen,
   onClose: onCloseProp,
   floatingButtonContent,
-  networkConfig
+  networkConfig,
+  features: featuresProp
 }) => {
   const systemScheme = useColorScheme();
   const insets = useSafeAreaInsets();
@@ -173,6 +174,15 @@ export const DebugTrigger = ({
   };
   const effectiveTheme = theme === "auto" ? systemScheme === "light" ? "light" : "dark" : theme;
   const isLight = effectiveTheme === "light";
+  const features = {
+    network: true,
+    console: true,
+    websocket: true,
+    errorBoundary: true,
+    performance: true,
+    persistence: true,
+    ...featuresProp
+  };
   const [clicks, setClicks] = useState(0);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showMonitor, setShowMonitor] = useState(false);
@@ -189,12 +199,12 @@ export const DebugTrigger = ({
     prevShowMonitor.current = showMonitor;
   }, [showMonitor, onOpen]);
   useEffect(() => {
-    setupNetworkMonitor(networkConfig);
-    setupConsoleMonitor();
-    setupWebSocketMonitor();
-    setupGlobalErrorHandlers();
-    startPerformanceMonitor();
-    startPersistence(15000);
+    if (features.network) setupNetworkMonitor(networkConfig);
+    if (features.console) setupConsoleMonitor();
+    if (features.websocket) setupWebSocketMonitor();
+    if (features.errorBoundary) setupGlobalErrorHandlers();
+    if (features.performance) startPerformanceMonitor();
+    if (features.persistence) startPersistence(15000);
     restoreLogs().then(savedLogs => {
       if (savedLogs.length > 0) {
         savedLogs.forEach(log => {
@@ -513,6 +523,7 @@ export const DebugTrigger = ({
     language: language,
     theme: theme,
     colors: customColors,
+    features: features,
     onClose: () => {
       setShowMonitor(false);
       onCloseProp?.();

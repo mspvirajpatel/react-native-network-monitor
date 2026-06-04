@@ -43,7 +43,12 @@ interface DebugMonitorProps {
   language?: LanguageCode;
   theme?: 'light' | 'dark' | 'auto';
   colors?: Partial<ThemeColors>;
-  tabs?: TabType[];
+  features?: {
+    network?: boolean;
+    console?: boolean;
+    websocket?: boolean;
+    performance?: boolean;
+  };
   headerTitle?: string;
   searchPlaceholder?: string;
   maxLogs?: number;
@@ -150,7 +155,7 @@ export const DebugMonitor = ({
   language = 'auto',
   theme = 'auto',
   colors: customColors,
-  tabs: customTabs,
+  features: featuresProp,
   headerTitle,
   searchPlaceholder,
   maxLogs,
@@ -177,7 +182,19 @@ export const DebugMonitor = ({
   const [perfRunning, setPerfRunning] = useState(isPerformanceMonitorRunning());
   const [deviceInfo] = useState<DeviceInfoData>(getDeviceInfo());
 
-  const availableTabs = customTabs || (['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'] as TabType[]);
+  const allTabs = ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'] as TabType[];
+
+  const features = { network: true, console: true, websocket: true, performance: true, ...featuresProp };
+  const tabFeatureMap: Partial<Record<TabType, keyof typeof features>> = {
+    NETWORK: 'network',
+    LOGS: 'console',
+    WEBSOCKET: 'websocket',
+    PERFORMANCE: 'performance',
+  };
+
+  const availableTabs = allTabs.filter(
+    (tab) => tabFeatureMap[tab] === undefined || features[tabFeatureMap[tab]!]
+  );
 
   useEffect(() => {
     if (!availableTabs.includes(activeTab)) {
@@ -946,7 +963,7 @@ export const DebugMonitor = ({
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.tabScroll}
           >
-            {(customTabs || ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'] as TabType[]).map((tab) => (
+            {availableTabs.map((tab) => (
               <TouchableOpacity
                 key={tab}
                 style={styles.tabItem}

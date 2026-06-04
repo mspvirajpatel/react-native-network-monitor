@@ -88,7 +88,7 @@ export const DebugMonitor = ({
   language = 'auto',
   theme = 'auto',
   colors: customColors,
-  tabs: customTabs,
+  features: featuresProp,
   headerTitle,
   searchPlaceholder,
   maxLogs,
@@ -112,7 +112,21 @@ export const DebugMonitor = ({
   const [fpsStats, setFpsStats] = useState(null);
   const [perfRunning, setPerfRunning] = useState(isPerformanceMonitorRunning());
   const [deviceInfo] = useState(getDeviceInfo());
-  const availableTabs = customTabs || ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'];
+  const allTabs = ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'];
+  const features = {
+    network: true,
+    console: true,
+    websocket: true,
+    performance: true,
+    ...featuresProp
+  };
+  const tabFeatureMap = {
+    NETWORK: 'network',
+    LOGS: 'console',
+    WEBSOCKET: 'websocket',
+    PERFORMANCE: 'performance'
+  };
+  const availableTabs = allTabs.filter(tab => tabFeatureMap[tab] === undefined || features[tabFeatureMap[tab]]);
   useEffect(() => {
     if (!availableTabs.includes(activeTab)) {
       setActiveTab(availableTabs[0] || 'ALL');
@@ -958,7 +972,7 @@ export const DebugMonitor = ({
     horizontal: true,
     showsHorizontalScrollIndicator: false,
     contentContainerStyle: styles.tabScroll
-  }, (customTabs || ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS']).map(tab => /*#__PURE__*/React.createElement(TouchableOpacity, {
+  }, availableTabs.map(tab => /*#__PURE__*/React.createElement(TouchableOpacity, {
     key: tab,
     style: styles.tabItem,
     onPress: () => setActiveTab(tab)

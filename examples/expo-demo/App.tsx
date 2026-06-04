@@ -108,6 +108,12 @@ interface DemoProps {
   demoHeaderTitle: string;
   demoMaxLogs: number;
   demoSearchPlaceholder: string;
+  featNetwork: boolean;
+  featConsole: boolean;
+  featWebsocket: boolean;
+  featPerformance: boolean;
+  featErrorBoundary: boolean;
+  featPersistence: boolean;
   setClicksNeeded: (n: number) => void;
   setPassOptional: (v: boolean) => void;
   setPassFreq: (v: "all-time" | "per-install" | "app-active") => void;
@@ -122,6 +128,12 @@ interface DemoProps {
   setDemoHeaderTitle: (v: string) => void;
   setDemoMaxLogs: (v: number) => void;
   setDemoSearchPlaceholder: (v: string) => void;
+  setFeatNetwork: (v: boolean) => void;
+  setFeatConsole: (v: boolean) => void;
+  setFeatWebsocket: (v: boolean) => void;
+  setFeatPerformance: (v: boolean) => void;
+  setFeatErrorBoundary: (v: boolean) => void;
+  setFeatPersistence: (v: boolean) => void;
 }
 
 /* ── AppContent — scrollable demo UI with feature buttons ── */
@@ -154,6 +166,18 @@ function AppContent({
   setDemoHeaderTitle,
   setDemoMaxLogs,
   setDemoSearchPlaceholder,
+  featNetwork,
+  featConsole,
+  featWebsocket,
+  featPerformance,
+  featErrorBoundary,
+  featPersistence,
+  setFeatNetwork,
+  setFeatConsole,
+  setFeatWebsocket,
+  setFeatPerformance,
+  setFeatErrorBoundary,
+  setFeatPersistence,
 }: DemoProps) {
   const { openDebugger, closeDebugger, isDebuggerOpen } = useDebugger();
   const wsRef = useRef<WebSocket | null>(null);
@@ -472,6 +496,41 @@ function AppContent({
             label="searchPlaceholder"
             value={demoSearchPlaceholder !== ""}
             onValue={(v) => setDemoSearchPlaceholder(v ? "Filter..." : "")}
+          />
+        </View>
+
+        {/* ═══ FEATURES (disabling hides monitor + tab) ═══ */}
+        <SectionHeader title="🔌 FEATURES (disable = hide tab)" />
+        <View style={styles.section}>
+          <PropToggle
+            label="network"
+            value={featNetwork}
+            onValue={setFeatNetwork}
+          />
+          <PropToggle
+            label="console"
+            value={featConsole}
+            onValue={setFeatConsole}
+          />
+          <PropToggle
+            label="websocket"
+            value={featWebsocket}
+            onValue={setFeatWebsocket}
+          />
+          <PropToggle
+            label="performance (FPS)"
+            value={featPerformance}
+            onValue={setFeatPerformance}
+          />
+          <PropToggle
+            label="errorBoundary"
+            value={featErrorBoundary}
+            onValue={setFeatErrorBoundary}
+          />
+          <PropToggle
+            label="persistence"
+            value={featPersistence}
+            onValue={setFeatPersistence}
           />
         </View>
 
@@ -833,6 +892,12 @@ export default function App() {
   const [demoHeaderTitle, setDemoHeaderTitle] = useState("");
   const [demoMaxLogs, setDemoMaxLogs] = useState(0);
   const [demoSearchPlaceholder, setDemoSearchPlaceholder] = useState("");
+  const [featNetwork, setFeatNetwork] = useState(true);
+  const [featConsole, setFeatConsole] = useState(true);
+  const [featWebsocket, setFeatWebsocket] = useState(true);
+  const [featPerformance, setFeatPerformance] = useState(true);
+  const [featErrorBoundary, setFeatErrorBoundary] = useState(true);
+  const [featPersistence, setFeatPersistence] = useState(true);
 
   return (
     <SafeAreaProvider>
@@ -869,6 +934,14 @@ export default function App() {
         floatingButtonContent={showCustomFloatingBtn ? <Text style={{ color: '#fff', fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>⚡DEMO</Text> : undefined}
         onOpen={() => Logger.logInfo('DebugTrigger onOpen fired')}
         onClose={() => Logger.logInfo('DebugTrigger onClose fired')}
+        features={{
+          network: featNetwork,
+          console: featConsole,
+          websocket: featWebsocket,
+          performance: featPerformance,
+          errorBoundary: featErrorBoundary,
+          persistence: featPersistence,
+        }}
       >
         <AppContent
           clicksNeeded={clicksNeeded}
@@ -899,6 +972,18 @@ export default function App() {
           setDemoHeaderTitle={setDemoHeaderTitle}
           setDemoMaxLogs={setDemoMaxLogs}
           setDemoSearchPlaceholder={setDemoSearchPlaceholder}
+          featNetwork={featNetwork}
+          featConsole={featConsole}
+          featWebsocket={featWebsocket}
+          featPerformance={featPerformance}
+          featErrorBoundary={featErrorBoundary}
+          featPersistence={featPersistence}
+          setFeatNetwork={setFeatNetwork}
+          setFeatConsole={setFeatConsole}
+          setFeatWebsocket={setFeatWebsocket}
+          setFeatPerformance={setFeatPerformance}
+          setFeatErrorBoundary={setFeatErrorBoundary}
+          setFeatPersistence={setFeatPersistence}
         />
       </DebugTrigger>
     </SafeAreaProvider>
