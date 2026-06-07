@@ -168,6 +168,11 @@ export const DebugMonitor = ({
   const C = getColors(effectiveTheme, customColors);
   const styles = styleSheet(C);
 
+  // Estimated fixed row height for FlatList getItemLayout performance optimization.
+  // Items may vary slightly in actual rendered height, but this constant keeps
+  // scroll offset calculation O(1) instead of measuring every row on mount.
+  const LOG_ITEM_HEIGHT = 112;
+
   const [logs, setLogs] = useState<LogEntry[]>(Logger.getLogs());
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('ALL');
@@ -742,6 +747,11 @@ export const DebugMonitor = ({
           );
         }}
         keyExtractor={(item: LogEntry) => item.id}
+        getItemLayout={(_data, index) => ({
+          length: LOG_ITEM_HEIGHT,
+          offset: LOG_ITEM_HEIGHT * index,
+          index,
+        })}
         contentContainerStyle={[styles.listContent, storeLogs.length === 0 && { flex: 1 }]}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -1067,6 +1077,11 @@ export const DebugMonitor = ({
             data={filteredLogs}
             renderItem={renderLogItem}
             keyExtractor={(item: LogEntry) => item.id}
+            getItemLayout={(_data, index) => ({
+              length: LOG_ITEM_HEIGHT,
+              offset: LOG_ITEM_HEIGHT * index,
+              index,
+            })}
             contentContainerStyle={[styles.listContent, filteredLogs.length === 0 && { flex: 1 }]}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
