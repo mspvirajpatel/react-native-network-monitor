@@ -243,6 +243,45 @@ export const DebugMonitor = ({
     [showToast],
   );
 
+  /** Map an HTTP method to a distinct badge color */
+  const getMethodColor = useCallback((method?: string): string => {
+    switch ((method || '').toUpperCase()) {
+      case 'GET':     return C.success;
+      case 'POST':    return C.primary;
+      case 'PUT':     return C.warning;
+      case 'PATCH':   return C.accent;
+      case 'DELETE':  return C.error;
+      default:        return C.textDim;
+    }
+  }, [C]);
+
+  /** Map a numeric HTTP status to a range-based color */
+  const getStatusColor = useCallback((status?: number): string => {
+    if (!status) return C.textDim;
+    if (status >= 200 && status < 300) return C.success;
+    if (status >= 300 && status < 400) return C.warning;
+    if (status >= 400 && status < 500) return C.warning;  /* 4xx = amber */
+    if (status >= 500) return C.error;
+    return C.textDim;
+  }, [C]);
+
+  /** Map a LogType to a consistent accent color for the indicator strip */
+  const getTypeColor = useCallback((item: LogEntry): string => {
+    if (item.type === 'error' || (item.status && item.status >= 400)) return C.error;
+    if (item.type === 'websocket') return C.accent;
+    if (item.type === 'performance') return C.warning;
+    if (item.type === 'action') return C.secondary;
+    if (item.type === 'database') return C.accent;
+    if (item.type === 'navigation') return C.warning;
+    if (item.type === 'info' && item.message?.startsWith('[ERROR]')) return C.error;
+    if (item.status) {
+      if (item.status >= 200 && item.status < 300) return C.success;
+      if (item.status >= 300 && item.status < 400) return C.warning;
+      if (item.status >= 400) return C.error;
+    }
+    return C.primary;
+  }, [C]);
+
   const t = useMemo(() => {
     const lang = resolveLanguage(language);
     return TRANSLATIONS[lang] || TRANSLATIONS.en;
@@ -465,16 +504,9 @@ export const DebugMonitor = ({
    */
   const renderLogItem = ({ item }: { item: LogEntry }): React.ReactElement => {
     const isConsoleError = item.type === 'info' && item.message?.startsWith('[ERROR]');
-    const isError = item.type === 'error' || (item.status && item.status >= 400) || isConsoleError;
-    const indicatorColor = isError
-      ? C.error
-      : item.type === 'database'
-        ? C.accent
-        : item.type === 'navigation'
-          ? C.warning
-          : item.status && item.status >= 200 && item.status < 300
-            ? C.success
-            : C.primary;
+    const typeColor = getTypeColor(item);
+    const methodColor = getMethodColor(item.method);
+    const statusColor = getStatusColor(item.status);
 
     return (
       <TouchableOpacity
@@ -485,17 +517,17 @@ export const DebugMonitor = ({
           setDetailTab('RESPONSE');
         }}
       >
-        <View style={[styles.logIndicator, { backgroundColor: indicatorColor }]} />
+        <View style={[styles.logIndicator, { backgroundColor: typeColor }]} />
         <View style={styles.logBody}>
           <View style={styles.logRow}>
-            <View style={[styles.logChip, { backgroundColor: indicatorColor + '18' }]}>
-              <Text style={[styles.logChipText, { color: indicatorColor }]}>
+            <View style={[styles.logChip, { backgroundColor: methodColor + '18' }]}>
+              <Text style={[styles.logChipText, { color: methodColor }]}>
                 {item.method || (isConsoleError ? t.logChipError : (item.type || '').toUpperCase())}
               </Text>
             </View>
             {item.status ? (
-              <View style={[styles.logStatusChip, { backgroundColor: indicatorColor + '18' }]}>
-                <Text style={[styles.logStatusText, { color: indicatorColor }]}>{item.status}</Text>
+              <View style={[styles.logStatusChip, { backgroundColor: statusColor + '18' }]}>
+                <Text style={[styles.logStatusText, { color: statusColor }]}>{item.status}</Text>
               </View>
             ) : null}
             <Text style={styles.logTime}>
@@ -726,11 +758,11 @@ export const DebugMonitor = ({
                 setDetailTab('RESPONSE');
               }}
             >
-              <View style={[styles.logIndicator, { backgroundColor: C.accent }]} />
+              <View style={[styles.logIndicator, { backgroundColor: C.secondary }]} />
               <View style={styles.logBody}>
                 <View style={styles.logRow}>
-                  <View style={[styles.logChip, { backgroundColor: C.accent + '18' }]}>
-                    <Text style={[styles.logChipText, { color: C.accent }]}>
+                  <View style={[styles.logChip, { backgroundColor: C.secondary + '18' }]}>
+                    <Text style={[styles.logChipText, { color: C.secondary }]}>
                       {sd?.actionType ? sd.actionType : t.action}
                     </Text>
                   </View>
@@ -903,7 +935,7 @@ export const DebugMonitor = ({
           const isOpen = log.message?.includes('OPEN');
           const isClose = log.message?.includes('CLOSE');
           const isError = log.message?.includes('ERROR');
-          const badgeColor = isOpen ? C.success : isClose ? C.textDim : isError ? C.error : C.primary;
+          const badgeColor = isOpen ? C.success : isClose ? C.textDim : isError ? C.error : C.secondary;
 
           return (
             <View key={log.id} style={styles.wsItem}>
