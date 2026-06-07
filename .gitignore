@@ -4,6 +4,7 @@ package/network-monitor/examples/cli/ios/Pods/**
 
 .npmrc
 
+.claude-flow/
 .expo/
 dist/
 npm-debug.*
@@ -41,7 +42,6 @@ local.properties
 **/node_modules/**
 npm-debug.log
 yarn-error.log
-package-lock.json
 yarn.lock
 
 # Bundle artifact

@@ -1,6 +1,9 @@
 {
   "name": "@mspvirajpatel/react-native-network-monitor",
   "version": "0.5.1",
+  "engines": {
+    "node": ">=18"
+  },
   "description": "A powerful, production-ready debug monitor for React Native apps. Intercepts network requests (fetch & XHR), captures console logs, and provides a beautiful in-app debug UI with password protection, environment switching, and log export.",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",

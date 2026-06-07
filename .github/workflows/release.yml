@@ -2,10 +2,32 @@ name: Release
 
 on:
   push:
-    branches: [master]
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
 
 jobs:
-  release:
+  check:
+    name: Lint & TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w packages/network-monitor
+      - run: npm run typescript -w packages/network-monitor
+      - run: npm run lint -w packages/network-monitor
+
+  publish:
+    name: Publish to npm
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,20 +40,22 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org/
 
-      - run: npm install
+      - run: npm ci
 
       - name: Bump version and create tag
         id: version
+        working-directory: packages/network-monitor
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
           npm version patch -m "chore: bump to %s [skip ci]"
           echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
-      - name: Push commit and tag to master
-        run: git push origin master --follow-tags
+      - name: Push commit and tag to main
+        run: git push origin main --follow-tags
 
       - name: Publish to npm
+        working-directory: packages/network-monitor
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -41,4 +65,4 @@ jobs:
         with:
           tag: v${{ steps.version.outputs.version }}
           generateReleaseNotes: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
