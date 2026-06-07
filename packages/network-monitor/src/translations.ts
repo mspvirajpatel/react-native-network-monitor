@@ -64,6 +64,8 @@ export interface Translation {
   shareTextReport: string;
   saveJsonReportToFile: string;
   saveTextReportToFile: string;
+  exportHarReport: string;
+  harSavedToFile: string;
   wipeAllRecords: string;
 
   // Environment
@@ -212,6 +214,8 @@ const en: Translation = {
   shareTextReport: 'SHARE TEXT REPORT',
   saveJsonReportToFile: 'SAVE JSON REPORT TO FILE',
   saveTextReportToFile: 'SAVE TEXT REPORT TO FILE',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: 'WIPE ALL RECORDS',
 
   productionApi: 'PRODUCTION API (PROD)',
@@ -350,6 +354,8 @@ const az: Translation = {
   shareTextReport: 'MƏTN HESABATI PAYLAŞ',
   saveJsonReportToFile: 'JSON HESABATI FAYLA SAXLA',
   saveTextReportToFile: 'MƏTN HESABATI FAYLA SAXLA',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: 'BÜTÜN QEYDLƏRİ SİL',
 
   productionApi: 'İSTEHSAL API (PROD)',
@@ -488,6 +494,8 @@ const ru: Translation = {
   shareTextReport: 'ПОДЕЛИТЬСЯ ТЕКСТОМ',
   saveJsonReportToFile: 'СОХРАНИТЬ JSON В ФАЙЛ',
   saveTextReportToFile: 'СОХРАНИТЬ ТЕКСТ В ФАЙЛ',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: 'ОЧИСТИТЬ ВСЕ ЗАПИСИ',
 
   productionApi: 'ПРОДАКШН API (PROD)',
@@ -626,6 +634,8 @@ const tr: Translation = {
   shareTextReport: 'METİN RAPORU PAYLAŞ',
   saveJsonReportToFile: 'JSON RAPORU DOSYAYA KAYDET',
   saveTextReportToFile: 'METİN RAPORU DOSYAYA KAYDET',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: 'TÜM KAYITLARI SİL',
 
   productionApi: 'PRODÜKSİYON API (PROD)',
@@ -764,6 +774,8 @@ const hi: Translation = {
   shareTextReport: 'टेक्स्ट रिपोर्ट साझा करें',
   saveJsonReportToFile: 'JSON रिपोर्ट फाइल में सहेजें',
   saveTextReportToFile: 'टेक्स्ट रिपोर्ट फाइल में सहेजें',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: 'सभी रिकॉर्ड हटाएँ',
 
   productionApi: 'प्रोडक्शन API (PROD)',
@@ -902,6 +914,8 @@ const gu: Translation = {
   shareTextReport: 'ટેક્સ્ટ રિપોર્ટ શેર કરો',
   saveJsonReportToFile: 'JSON રિપોર્ટ ફાઇલમાં સાચવો',
   saveTextReportToFile: 'ટેક્સ્ટ રિપોર્ટ ફાઇલમાં સાચવો',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: 'બધી રેકોર્ડ્સ કાઢી નાખો',
 
   productionApi: 'પ્રોડક્શન API (PROD)',
@@ -1040,6 +1054,8 @@ const es: Translation = {
   shareTextReport: 'COMPARTIR INFORME DE TEXTO',
   saveJsonReportToFile: 'GUARDAR JSON EN ARCHIVO',
   saveTextReportToFile: 'GUARDAR TEXTO EN ARCHIVO',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: 'ELIMINAR TODOS LOS REGISTROS',
 
   productionApi: 'API DE PRODUCCIÓN (PROD)',
@@ -1178,6 +1194,8 @@ const fr: Translation = {
   shareTextReport: 'PARTAGER RAPPORT TEXTE',
   saveJsonReportToFile: 'ENREGISTRER JSON DANS FICHIER',
   saveTextReportToFile: 'ENREGISTRER TEXTE DANS FICHIER',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: 'EFFACER TOUS LES ENREGISTREMENTS',
 
   productionApi: 'API PRODUCTION (PROD)',
@@ -1316,6 +1334,8 @@ const de: Translation = {
   shareTextReport: 'TEXT-BERICHT TEILEN',
   saveJsonReportToFile: 'JSON IN DATEI SPEICHERN',
   saveTextReportToFile: 'TEXT IN DATEI SPEICHERN',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: 'ALLE AUFZEICHNUNGEN LÖSCHEN',
 
   productionApi: 'PRODUKTION-API (PROD)',
@@ -1454,6 +1474,8 @@ const ar: Translation = {
   shareTextReport: 'مشاركة تقرير نصي',
   saveJsonReportToFile: 'حفظ JSON في ملف',
   saveTextReportToFile: 'حفظ النص في ملف',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: 'مسح جميع السجلات',
 
   productionApi: 'API الإنتاج (PROD)',
@@ -1592,6 +1614,8 @@ const zh: Translation = {
   shareTextReport: '分享文本报告',
   saveJsonReportToFile: '将 JSON 保存到文件',
   saveTextReportToFile: '将文本保存到文件',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: '清除所有记录',
 
   productionApi: '生产环境 API (PROD)',
@@ -1728,6 +1752,8 @@ const pt: Translation = {
   shareTextReport: 'COMPARTILHAR RELATÓRIO TEXTO',
   saveJsonReportToFile: 'SALVAR JSON EM ARQUIVO',
   saveTextReportToFile: 'SALVAR TEXTO EM ARQUIVO',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: 'APAGAR TODOS OS REGISTROS',
 
   productionApi: 'API DE PRODUÇÃO (PROD)',
@@ -1866,6 +1892,8 @@ const ja: Translation = {
   shareTextReport: 'テキストレポートを共有',
   saveJsonReportToFile: 'JSON をファイルに保存',
   saveTextReportToFile: 'テキストをファイルに保存',
+  exportHarReport: 'EXPORT HAR',
+  harSavedToFile: 'HAR archive saved',
   wipeAllRecords: 'すべての記録を削除',
 
   productionApi: '本番 API (PROD)',

@@ -15,6 +15,7 @@ import { Logger } from '../Logger';
 import type { DeviceInfoData } from '../DeviceInfo';
 import { generateExportReport, formatReportAsText } from '../ExportReport';
 import { saveReportToJson, saveReportToText } from '../FileExporter';
+import { generateHarExport } from '../harExport';
 
 interface SettingsPanelProps {
   baseUrls?: string[] | { title: string; url: string }[];
@@ -200,6 +201,20 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         message: text,
         title: t.reportTitle,
       });
+    } catch (e) {
+      showError(t.couldNotShareReport);
+    }
+  };
+
+  /** Export HAR archive */
+  const handleExportHar = async (): Promise<void> => {
+    try {
+      const har = generateHarExport(logs);
+      await Share.share({
+        message: JSON.stringify(har, null, 2),
+        title: t.reportTitle,
+      });
+      showSuccess(t.harSavedToFile);
     } catch (e) {
       showError(t.couldNotShareReport);
     }
@@ -404,6 +419,15 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               onPress={() => saveReportToText(logs)}
             >
               <Text style={[styles.toolBtnText, { color: C.accent }]}>{t.saveTextReportToFile}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t.exportHarReport}
+              style={[styles.toolBtn, { margin: 0, marginBottom: 16, borderColor: C.accent + '40' }]}
+              onPress={handleExportHar}
+            >
+              <Text style={[styles.toolBtnText, { color: C.accent }]}>{t.exportHarReport}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
