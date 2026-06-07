@@ -9,6 +9,7 @@ export {
   stopPerformanceMonitor,
   subscribeToFps,
   isPerformanceMonitorRunning,
+  getFpsHistory,
   type FpsStats
 } from './PerformanceMonitor';
 

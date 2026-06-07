@@ -12,6 +12,7 @@ export interface FpsStats {
   maxFps: number;
   averageFps: number;
   droppedFrames: number;
+  history: number[];
 }
 
 let fpsHistory: number[] = [];
@@ -48,6 +49,7 @@ const tick = (timestamp: number) => {
       maxFps,
       averageFps,
       droppedFrames: Math.max(0, droppedFrames),
+      history: [...fpsHistory],
     };
 
     subscribers.forEach((s) => s(stats));
@@ -90,3 +92,5 @@ export const subscribeToFps = (cb: (stats: FpsStats) => void) => {
 };
 
 export const isPerformanceMonitorRunning = () => isRunning;
+
+export const getFpsHistory = () => [...fpsHistory];

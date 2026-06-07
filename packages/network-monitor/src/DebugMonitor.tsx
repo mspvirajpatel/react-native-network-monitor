@@ -800,21 +800,25 @@ export const DebugMonitor = ({
             <View style={styles.perfCard}>
               <Text style={styles.perfLabel}>{t.fpsHistory}</Text>
               <View style={{ height: 80, flexDirection: 'row', alignItems: 'flex-end', gap: 1, marginTop: 12 }}>
-                {Array.from({ length: Math.min(60, fps.fps) }, (_, i) => {
-                  const h = Math.max(4, (fps.averageFps / 60) * 80);
+                {fps.history.length > 0 ? fps.history.map((value: number, i: number) => {
+                  const barHeight = Math.max(4, (value / 60) * 80);
                   return (
                     <View
                       key={i}
                       style={{
                         flex: 1,
-                        height: h,
-                        backgroundColor: barColor,
+                        height: barHeight,
+                        backgroundColor: value >= 55 ? C.success : value >= 30 ? C.warning : C.error,
                         borderRadius: 1,
-                        opacity: 0.5 + (i / 60) * 0.5
+                        opacity: 0.5 + (i / fps.history.length) * 0.5
                       }}
                     />
                   );
-                })}
+                }) : (
+                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: C.textDim, fontSize: 10 }}>Collecting data...</Text>
+                  </View>
+                )}
               </View>
             </View>
           </>
