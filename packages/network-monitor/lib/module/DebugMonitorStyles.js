@@ -1,4 +1,4 @@
-import { Platform, StyleSheet } from 'react-native';
+import { I18nManager, Platform, StyleSheet } from 'react-native';
 export const DARK_COLORS = {
   background: '#0B0B14',
   surface: '#14141F',
@@ -167,7 +167,7 @@ const styleSheet = (C = DARK_COLORS) => StyleSheet.create({
   tabBadge: {
     fontSize: 9,
     fontWeight: '700',
-    marginLeft: 3
+    marginStart: 3
   },
   tabActiveLine: {
     height: 2.5,
@@ -197,7 +197,7 @@ const styleSheet = (C = DARK_COLORS) => StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '500',
-    marginLeft: 10
+    marginStart: 10
   },
   clearSearch: {
     color: C.textDim,
@@ -288,7 +288,7 @@ const styleSheet = (C = DARK_COLORS) => StyleSheet.create({
     color: C.textSubtle,
     fontSize: 9,
     fontWeight: '600',
-    marginLeft: 'auto'
+    marginStart: 'auto'
   },
   logUrl: {
     color: C.text,
@@ -776,7 +776,7 @@ const styleSheet = (C = DARK_COLORS) => StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
-    marginRight: 8
+    marginEnd: 8
   },
   wsBadgeText: {
     fontSize: 8,
@@ -832,10 +832,15 @@ const styleSheet = (C = DARK_COLORS) => StyleSheet.create({
     marginTop: 4
   },
   // ── Scroll-to-top Button ──────────────────────────────────────────
+  // Positioned on the right in LTR, stays on the right in RTL (convention, not text direction)
   scrollTopBtn: {
     position: 'absolute',
     bottom: 30,
-    right: 20,
+    ...(I18nManager.isRTL ? {
+      left: 20
+    } : {
+      right: 20
+    }),
     width: 44,
     height: 44,
     borderRadius: 22,

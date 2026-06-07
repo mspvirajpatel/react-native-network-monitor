@@ -1,4 +1,4 @@
-import { Platform, StyleSheet } from 'react-native';
+import { I18nManager, Platform, StyleSheet } from 'react-native';
 
 export interface ThemeColors {
   background: string;
@@ -177,7 +177,7 @@ const styleSheet = (C: ThemeColors = DARK_COLORS) =>
     tabBadge: {
       fontSize: 9,
       fontWeight: '700',
-      marginLeft: 3,
+      marginStart: 3,
     },
     tabActiveLine: {
       height: 2.5,
@@ -204,7 +204,7 @@ const styleSheet = (C: ThemeColors = DARK_COLORS) =>
       flex: 1,
       fontSize: 13,
       fontWeight: '500',
-      marginLeft: 10,
+      marginStart: 10,
     },
     clearSearch: { color: C.textDim, fontSize: 16, paddingHorizontal: 4 },
 
@@ -268,7 +268,7 @@ const styleSheet = (C: ThemeColors = DARK_COLORS) =>
       color: C.textSubtle,
       fontSize: 9,
       fontWeight: '600',
-      marginLeft: 'auto',
+      marginStart: 'auto',
     },
     logUrl: {
       color: C.text,
@@ -627,7 +627,7 @@ const styleSheet = (C: ThemeColors = DARK_COLORS) =>
       paddingHorizontal: 8,
       paddingVertical: 2,
       borderRadius: 6,
-      marginRight: 8,
+      marginEnd: 8,
     },
     wsBadgeText: { fontSize: 8, fontWeight: '900', letterSpacing: 0.3 },
     wsUrl: { color: C.text, fontSize: 11, fontWeight: '600', flex: 1 },
@@ -656,10 +656,11 @@ const styleSheet = (C: ThemeColors = DARK_COLORS) =>
     },
 
     // ── Scroll-to-top Button ──────────────────────────────────────────
+    // Positioned on the right in LTR, stays on the right in RTL (convention, not text direction)
     scrollTopBtn: {
       position: 'absolute',
       bottom: 30,
-      right: 20,
+      ...(I18nManager.isRTL ? { left: 20 } : { right: 20 }),
       width: 44,
       height: 44,
       borderRadius: 22,

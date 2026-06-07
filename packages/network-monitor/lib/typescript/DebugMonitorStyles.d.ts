@@ -128,7 +128,7 @@ declare const styleSheet: (C?: ThemeColors) => {
     tabBadge: {
         fontSize: number;
         fontWeight: "700";
-        marginLeft: number;
+        marginStart: number;
     };
     tabActiveLine: {
         height: number;
@@ -157,7 +157,7 @@ declare const styleSheet: (C?: ThemeColors) => {
         flex: number;
         fontSize: number;
         fontWeight: "500";
-        marginLeft: number;
+        marginStart: number;
     };
     clearSearch: {
         color: string;
@@ -246,7 +246,7 @@ declare const styleSheet: (C?: ThemeColors) => {
         color: string;
         fontSize: number;
         fontWeight: "600";
-        marginLeft: "auto";
+        marginStart: "auto";
     };
     logUrl: {
         color: string;
@@ -725,7 +725,7 @@ declare const styleSheet: (C?: ThemeColors) => {
         paddingHorizontal: number;
         paddingVertical: number;
         borderRadius: number;
-        marginRight: number;
+        marginEnd: number;
     };
     wsBadgeText: {
         fontSize: number;
@@ -780,9 +780,6 @@ declare const styleSheet: (C?: ThemeColors) => {
         marginTop: number;
     };
     scrollTopBtn: {
-        position: "absolute";
-        bottom: number;
-        right: number;
         width: number;
         height: number;
         borderRadius: number;
@@ -795,6 +792,25 @@ declare const styleSheet: (C?: ThemeColors) => {
         shadowOpacity: number;
         shadowRadius: number;
         elevation: number;
+        left: number;
+        position: "absolute";
+        bottom: number;
+    } | {
+        width: number;
+        height: number;
+        borderRadius: number;
+        alignItems: "center";
+        justifyContent: "center";
+        shadowOffset: {
+            width: number;
+            height: number;
+        };
+        shadowOpacity: number;
+        shadowRadius: number;
+        elevation: number;
+        right: number;
+        position: "absolute";
+        bottom: number;
     };
     scrollTopBtnText: {
         color: string;
