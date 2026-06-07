@@ -121,6 +121,7 @@ export interface Translation {
   response: string;
   close: string;
   exit: string;
+  replayRequest: string;
 
   // GraphQL
   graphqlOperation: string;
@@ -263,6 +264,7 @@ const en: Translation = {
   response: 'RESPONSE',
   close: 'Close',
   exit: 'Exit',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'GRAPHQL OPERATION',
   graphqlOperationName: 'OPERATION NAME',
@@ -400,6 +402,7 @@ const az: Translation = {
   response: 'CAVAB',
   close: 'Bağla',
   exit: 'Çıxış',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'GRAPHQL OPERATION',
   graphqlOperationName: 'OPERATION NAME',
@@ -537,6 +540,7 @@ const ru: Translation = {
   response: 'ОТВЕТ',
   close: 'Закрыть',
   exit: 'Выход',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'GQL ОПЕРАЦИЯ',
   graphqlOperationName: 'ИМЯ ОПЕРАЦИИ',
@@ -674,6 +678,7 @@ const tr: Translation = {
   response: 'YANIT',
   close: 'Kapat',
   exit: 'Çıkış',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'GRAPHQL İŞLEMİ',
   graphqlOperationName: 'İŞLEM ADI',
@@ -811,6 +816,7 @@ const hi: Translation = {
   response: 'प्रतिक्रिया',
   close: 'बंद करें',
   exit: 'बाहर',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'ग्राफ़क्यूएल ऑपरेशन',
   graphqlOperationName: 'ऑपरेशन नाम',
@@ -948,6 +954,7 @@ const gu: Translation = {
   response: 'પ્રતિસાદ',
   close: 'બંધ કરો',
   exit: 'બહાર',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'GRAPHQL ઓપરેશન',
   graphqlOperationName: 'ઓપરેશન નામ',
@@ -1085,6 +1092,7 @@ const es: Translation = {
   response: 'RESPUESTA',
   close: 'Cerrar',
   exit: 'Salir',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'OPERACIÓN GRAPHQL',
   graphqlOperationName: 'NOMBRE DE OPERACIÓN',
@@ -1222,6 +1230,7 @@ const fr: Translation = {
   response: 'RÉPONSE',
   close: 'Fermer',
   exit: 'Quitter',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'OPÉRATION GRAPHQL',
   graphqlOperationName: 'NOM DE L\'OPÉRATION',
@@ -1359,6 +1368,7 @@ const de: Translation = {
   response: 'ANTWORT',
   close: 'Schließen',
   exit: 'Beenden',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'GRAPHQL-OPERATION',
   graphqlOperationName: 'OPERATIONSNAME',
@@ -1496,6 +1506,7 @@ const ar: Translation = {
   response: 'استجابة',
   close: 'إغلاق',
   exit: 'خروج',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'عملية GRAPHQL',
   graphqlOperationName: 'اسم العملية',
@@ -1633,6 +1644,7 @@ const zh: Translation = {
   response: '响应',
   close: '关闭',
   exit: '退出',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'GRAPHQL 操作',
   graphqlOperationName: '操作名称',
@@ -1768,6 +1780,7 @@ const pt: Translation = {
   response: 'RESPOSTA',
   close: 'Fechar',
   exit: 'Sair',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'OPERAÇÃO GRAPHQL',
   graphqlOperationName: 'NOME DA OPERAÇÃO',
@@ -1905,6 +1918,7 @@ const ja: Translation = {
   response: 'レスポンス',
   close: '閉じる',
   exit: '終了',
+  replayRequest: 'Replay Request',
 
   graphqlOperation: 'GRAPHQL 操作',
   graphqlOperationName: '操作名',

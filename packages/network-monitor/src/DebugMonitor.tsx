@@ -487,6 +487,51 @@ export const DebugMonitor = ({
     }
   };
 
+  const handleReplayRequest = async (log: LogEntry): Promise<void> => {
+    if (!log.url) {
+      showError(t.replayRequest + ' — ' + (t.noTimelineData || 'No URL'));
+      return;
+    }
+
+    setLoading('Replaying request...');
+    try {
+      const method = log.method || 'GET';
+      const url = log.url;
+      const headers: Record<string, string> = {};
+
+      // Copy request headers (skip internal header names)
+      if (log.requestHeaders && typeof log.requestHeaders === 'object') {
+        const raw = log.requestHeaders as Record<string, unknown>;
+        Object.keys(raw).forEach((key) => {
+          if (typeof raw[key] === 'string' || typeof raw[key] === 'number') {
+            headers[key] = String(raw[key]);
+          }
+        });
+      }
+
+      // Prepare body (exclude for GET/HEAD)
+      let body: any;
+      if (log.requestData && method !== 'GET' && method !== 'HEAD') {
+        if (typeof log.requestData === 'object') {
+          body = JSON.stringify(log.requestData);
+          // Ensure Content-Type for JSON bodies
+          if (!headers['Content-Type'] && !headers['content-type']) {
+            headers['Content-Type'] = 'application/json';
+          }
+        } else {
+          body = String(log.requestData);
+        }
+      }
+
+      const response = await fetch(url, { method, headers, body } as RequestInit);
+      showSuccess(`${t.replayRequest} — ${response.status} ${response.statusText || ''}`);
+    } catch (err: unknown) {
+      showError(t.replayRequest + ' — ' + ((err as Error)?.message || 'Failed'));
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const escapeShell = (str: string): string => {
     return str.replace(/'/g, "'\\''");
   };
@@ -913,6 +958,18 @@ export const DebugMonitor = ({
                       >
                         <Text style={styles.detailDropdownText}>{t.shareCurl}</Text>
                       </TouchableOpacity>
+                      {selectedLog?.url && (
+                        <TouchableOpacity
+                          accessibilityRole="menuitem"
+                          style={styles.detailDropdownItem}
+                          onPress={() => {
+                            if (selectedLog) handleReplayRequest(selectedLog);
+                            setShowMenu(false);
+                          }}
+                        >
+                          <Text style={styles.detailDropdownText}>{t.replayRequest}</Text>
+                        </TouchableOpacity>
+                      )}
                       {customActions?.map((action, i) => (
                         <TouchableOpacity
                           key={`ca-${i}`}
