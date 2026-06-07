@@ -242,6 +242,16 @@ declare const styleSheet: (C?: ThemeColors) => {
         fontSize: number;
         fontWeight: "900";
     };
+    graphqlBadge: {
+        paddingHorizontal: number;
+        paddingVertical: number;
+        borderRadius: number;
+    };
+    graphqlBadgeText: {
+        fontSize: number;
+        fontWeight: "900";
+        letterSpacing: number;
+    };
     logTime: {
         color: string;
         fontSize: number;

@@ -264,6 +264,12 @@ const styleSheet = (C: ThemeColors = DARK_COLORS) =>
       borderRadius: 5,
     },
     logStatusText: { fontSize: 9, fontWeight: '900' },
+    graphqlBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    graphqlBadgeText: { fontSize: 8, fontWeight: '900', letterSpacing: 0.5 },
     logTime: {
       color: C.textSubtle,
       fontSize: 9,

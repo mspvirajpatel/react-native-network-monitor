@@ -76,6 +76,10 @@ export interface Translation {
     response: string;
     close: string;
     exit: string;
+    graphqlOperation: string;
+    graphqlOperationName: string;
+    graphqlQuery: string;
+    graphqlVariables: string;
     ms: string;
     kb: string;
     error: string;

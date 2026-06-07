@@ -122,6 +122,12 @@ export interface Translation {
   close: string;
   exit: string;
 
+  // GraphQL
+  graphqlOperation: string;
+  graphqlOperationName: string;
+  graphqlQuery: string;
+  graphqlVariables: string;
+
   // Detail formatting
   ms: string;
   kb: string;
@@ -253,6 +259,11 @@ const en: Translation = {
   close: 'Close',
   exit: 'Exit',
 
+  graphqlOperation: 'GRAPHQL OPERATION',
+  graphqlOperationName: 'OPERATION NAME',
+  graphqlQuery: 'QUERY',
+  graphqlVariables: 'VARIABLES',
+
   ms: 'ms',
   kb: 'kb',
   error: 'Error',
@@ -380,6 +391,11 @@ const az: Translation = {
   response: 'CAVAB',
   close: 'Bağla',
   exit: 'Çıxış',
+
+  graphqlOperation: 'GRAPHQL OPERATION',
+  graphqlOperationName: 'OPERATION NAME',
+  graphqlQuery: 'QUERY',
+  graphqlVariables: 'VARIABLES',
 
   ms: 'ms',
   kb: 'kb',
@@ -509,6 +525,11 @@ const ru: Translation = {
   close: 'Закрыть',
   exit: 'Выход',
 
+  graphqlOperation: 'GQL ОПЕРАЦИЯ',
+  graphqlOperationName: 'ИМЯ ОПЕРАЦИИ',
+  graphqlQuery: 'ЗАПРОС',
+  graphqlVariables: 'ПЕРЕМЕННЫЕ',
+
   ms: 'мс',
   kb: 'кб',
   error: 'Ошибка',
@@ -636,6 +657,11 @@ const tr: Translation = {
   response: 'YANIT',
   close: 'Kapat',
   exit: 'Çıkış',
+
+  graphqlOperation: 'GRAPHQL İŞLEMİ',
+  graphqlOperationName: 'İŞLEM ADI',
+  graphqlQuery: 'SORGU',
+  graphqlVariables: 'DEĞİŞKENLER',
 
   ms: 'ms',
   kb: 'kb',
@@ -765,6 +791,11 @@ const hi: Translation = {
   close: 'बंद करें',
   exit: 'बाहर',
 
+  graphqlOperation: 'ग्राफ़क्यूएल ऑपरेशन',
+  graphqlOperationName: 'ऑपरेशन नाम',
+  graphqlQuery: 'क्वेरी',
+  graphqlVariables: 'चर',
+
   ms: 'मि.से.',
   kb: 'कि.बा.',
   error: 'त्रुटि',
@@ -892,6 +923,11 @@ const gu: Translation = {
   response: 'પ્રતિસાદ',
   close: 'બંધ કરો',
   exit: 'બહાર',
+
+  graphqlOperation: 'GRAPHQL ઓપરેશન',
+  graphqlOperationName: 'ઓપરેશન નામ',
+  graphqlQuery: 'ક્વેરી',
+  graphqlVariables: 'વેરિયેબલ્સ',
 
   ms: 'મિ.સે.',
   kb: 'કિ.બા.',
@@ -1021,6 +1057,11 @@ const es: Translation = {
   close: 'Cerrar',
   exit: 'Salir',
 
+  graphqlOperation: 'OPERACIÓN GRAPHQL',
+  graphqlOperationName: 'NOMBRE DE OPERACIÓN',
+  graphqlQuery: 'CONSULTA',
+  graphqlVariables: 'VARIABLES',
+
   ms: 'ms',
   kb: 'kb',
   error: 'Error',
@@ -1148,6 +1189,11 @@ const fr: Translation = {
   response: 'RÉPONSE',
   close: 'Fermer',
   exit: 'Quitter',
+
+  graphqlOperation: 'OPÉRATION GRAPHQL',
+  graphqlOperationName: 'NOM DE L\'OPÉRATION',
+  graphqlQuery: 'REQUÊTE',
+  graphqlVariables: 'VARIABLES',
 
   ms: 'ms',
   kb: 'ko',
@@ -1277,6 +1323,11 @@ const de: Translation = {
   close: 'Schließen',
   exit: 'Beenden',
 
+  graphqlOperation: 'GRAPHQL-OPERATION',
+  graphqlOperationName: 'OPERATIONSNAME',
+  graphqlQuery: 'ABFRAGE',
+  graphqlVariables: 'VARIABLEN',
+
   ms: 'ms',
   kb: 'KB',
   error: 'Fehler',
@@ -1404,6 +1455,11 @@ const ar: Translation = {
   response: 'استجابة',
   close: 'إغلاق',
   exit: 'خروج',
+
+  graphqlOperation: 'عملية GRAPHQL',
+  graphqlOperationName: 'اسم العملية',
+  graphqlQuery: 'استعلام',
+  graphqlVariables: 'متغيرات',
 
   ms: 'م.ث',
   kb: 'ك.ب',
@@ -1533,6 +1589,11 @@ const zh: Translation = {
   close: '关闭',
   exit: '退出',
 
+  graphqlOperation: 'GRAPHQL 操作',
+  graphqlOperationName: '操作名称',
+  graphqlQuery: '查询',
+  graphqlVariables: '变量',
+
   ms: '毫秒',
   kb: 'KB',
   error: '错误',
@@ -1658,6 +1719,11 @@ const pt: Translation = {
   response: 'RESPOSTA',
   close: 'Fechar',
   exit: 'Sair',
+
+  graphqlOperation: 'OPERAÇÃO GRAPHQL',
+  graphqlOperationName: 'NOME DA OPERAÇÃO',
+  graphqlQuery: 'CONSULTA',
+  graphqlVariables: 'VARIÁVEIS',
 
   ms: 'ms',
   kb: 'kb',
@@ -1786,6 +1852,11 @@ const ja: Translation = {
   response: 'レスポンス',
   close: '閉じる',
   exit: '終了',
+
+  graphqlOperation: 'GRAPHQL 操作',
+  graphqlOperationName: '操作名',
+  graphqlQuery: 'クエリ',
+  graphqlVariables: '変数',
 
   ms: 'ミリ秒',
   kb: 'KB',

@@ -465,7 +465,15 @@ const DebugMonitor = ({
       style: [styles.logStatusText, {
         color: statusColor
       }]
-    }, item.status)) : null, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    }, item.status)) : null, item.graphql ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.graphqlBadge, {
+        backgroundColor: C.secondary + '18'
+      }]
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.graphqlBadgeText, {
+        color: C.secondary
+      }]
+    }, item.graphql.operationType !== 'unknown' ? item.graphql.operationType.toUpperCase().slice(0, 4) : 'GQL')) : null, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.logTime
     }, new Date(item.timestamp).toLocaleTimeString([], {
       hour12: false,
@@ -881,6 +889,26 @@ const DebugMonitor = ({
       selectable: true,
       label: t.url,
       value: selectedLog?.isRedirected ? `${selectedLog?.originalUrl} ➔ ${selectedLog?.url}` : selectedLog?.url,
+      onCopy: handleCopy
+    }), selectedLog?.graphql && selectedLog.graphql.operationType !== 'unknown' && /*#__PURE__*/_react.default.createElement(Section, {
+      themeColors: C,
+      label: t.graphqlOperation,
+      value: selectedLog.graphql.operationType.toUpperCase(),
+      onCopy: handleCopy
+    }), selectedLog?.graphql?.operationName && /*#__PURE__*/_react.default.createElement(Section, {
+      themeColors: C,
+      label: t.graphqlOperationName,
+      value: selectedLog.graphql.operationName,
+      onCopy: handleCopy
+    }), selectedLog?.graphql?.variables && /*#__PURE__*/_react.default.createElement(Section, {
+      themeColors: C,
+      label: t.graphqlVariables,
+      json: selectedLog.graphql.variables,
+      onCopy: handleCopy
+    }), selectedLog?.graphql?.query && /*#__PURE__*/_react.default.createElement(Section, {
+      themeColors: C,
+      label: t.graphqlQuery,
+      value: selectedLog.graphql.query,
       onCopy: handleCopy
     }), /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,

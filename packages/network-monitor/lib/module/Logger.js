@@ -170,6 +170,9 @@ class DebugLogger {
     if (data._isAxios && data.axiosConfig) {
       data.axiosConfig.__reqId = reqId;
     }
+
+    // Auto-detect GraphQL if not provided
+    const graphql = data.graphql || DebugLogger.detectGraphQL(data.data, data.headers, data.url);
     const log = {
       id: reqId,
       type: 'request',
@@ -179,7 +182,8 @@ class DebugLogger {
       isRedirected: data.isRedirected,
       method: data.method?.toUpperCase(),
       requestData: data.data,
-      requestHeaders: data.headers
+      requestHeaders: data.headers,
+      graphql: graphql || undefined
     };
     this.logs.unshift(log);
     this.notify();
@@ -194,6 +198,17 @@ class DebugLogger {
    */
   logResponse(data) {
     const size = this.calculateSize(data.data);
+
+    // Detect GraphQL from response shape (has `data` or `errors` at top level)
+    let graphqlResponse = null;
+    if (data.data && typeof data.data === 'object') {
+      const rd = data.data;
+      if (rd.data !== undefined || rd.errors !== undefined) {
+        graphqlResponse = {
+          operationType: 'unknown'
+        };
+      }
+    }
     if (data.reqId) {
       const logIndex = this.logs.findIndex(l => l.id === data.reqId);
       if (logIndex !== -1) {
@@ -207,7 +222,8 @@ class DebugLogger {
           responseData: data.data,
           responseHeaders: data.headers,
           durationMs,
-          size
+          size,
+          graphql: existingLog.graphql || graphqlResponse || undefined
         };
         this.notify();
         return;
@@ -223,7 +239,8 @@ class DebugLogger {
       responseData: data.data,
       responseHeaders: data.headers,
       durationMs: 0,
-      size
+      size,
+      graphql: graphqlResponse || undefined
     });
     this.notify();
   }
@@ -400,6 +417,62 @@ class DebugLogger {
     this.notify();
   }
   init() {}
+
+  /**
+   * detectGraphQL
+   *
+   * Detect if a request body contains a GraphQL query/mutation/subscription
+   * and extract relevant metadata. Returns null if the request is not GraphQL.
+   *
+   * @param body - The parsed request body (object or string)
+   * @param headers - The request headers
+   * @param url - The request URL
+   * @returns GraphQLInfo if detected, null otherwise
+   */
+  static detectGraphQL(body, headers, url) {
+    // Fast path: check for /graphql in URL
+    if (url && url.includes('/graphql')) {
+      // Check if body has GraphQL markers
+      if (body && typeof body === 'object') {
+        const query = body.query || body.operationName ? body : null;
+        if (query) {
+          const opType = query.query?.trim().startsWith('mutation') ? 'mutation' : query.query?.trim().startsWith('subscription') ? 'subscription' : 'query';
+          return {
+            operationType: query.operationName ? opType : 'query',
+            operationName: query.operationName,
+            query: query.query,
+            variables: query.variables
+          };
+        }
+      }
+      // URL contains /graphql but no GraphQL body — still tag it
+      return {
+        operationType: 'unknown'
+      };
+    }
+
+    // Check headers for GraphQL content type
+    const contentType = headers?.['content-type'] || headers?.['Content-Type'] || '';
+    if (contentType.includes('application/graphql')) {
+      return {
+        operationType: 'unknown',
+        query: typeof body === 'string' ? body : undefined
+      };
+    }
+
+    // Check JSON body for GraphQL query structure even without /graphql URL
+    if (body && typeof body === 'object' && (body.query || body.operationName)) {
+      const query = body;
+      const opType = query.query?.trim().startsWith('mutation') ? 'mutation' : query.query?.trim().startsWith('subscription') ? 'subscription' : 'query';
+      return {
+        operationType: query.operationName ? opType : opType,
+        operationName: query.operationName,
+        query: query.query,
+        variables: query.variables
+      };
+    }
+    return null;
+  }
 }
 
 /**

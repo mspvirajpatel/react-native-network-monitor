@@ -9,6 +9,12 @@ export interface StateActionData {
     }>;
     snapshot?: any;
 }
+export interface GraphQLInfo {
+    operationType: 'query' | 'mutation' | 'subscription' | 'unknown';
+    operationName?: string;
+    query?: string;
+    variables?: any;
+}
 export interface LogEntry {
     id: string;
     type: LogType;
@@ -27,6 +33,7 @@ export interface LogEntry {
     durationMs?: number;
     size?: string;
     stateData?: StateActionData;
+    graphql?: GraphQLInfo;
 }
 export interface CustomUrlEntry {
     title: string;
@@ -144,6 +151,7 @@ declare class DebugLogger {
         reqId?: string;
         _isAxios?: boolean;
         axiosConfig?: any;
+        graphql?: GraphQLInfo;
     }): string;
     /**
      * logResponse
@@ -237,6 +245,18 @@ declare class DebugLogger {
         droppedFrames?: number;
     }): void;
     init(): void;
+    /**
+     * detectGraphQL
+     *
+     * Detect if a request body contains a GraphQL query/mutation/subscription
+     * and extract relevant metadata. Returns null if the request is not GraphQL.
+     *
+     * @param body - The parsed request body (object or string)
+     * @param headers - The request headers
+     * @param url - The request URL
+     * @returns GraphQLInfo if detected, null otherwise
+     */
+    static detectGraphQL(body?: any, headers?: any, url?: string): GraphQLInfo | null;
 }
 /**
  * Shared logger instance used by the package.
