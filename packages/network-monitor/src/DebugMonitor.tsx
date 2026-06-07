@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import { generateExportReport, formatReportAsText } from './ExportReport';
 import { isInternalUrl } from './NetworkMonitor';
 import { saveReportToJson, saveReportToText } from './FileExporter';
 import { useDebugger } from './DebugContext';
+import { useToast, type ToastType } from './Toast';
 import {
   TRANSLATIONS,
   resolveLanguage,
@@ -231,6 +232,17 @@ export const DebugMonitor = ({
     return unsub1;
   }, [addCloseCleanup]);
 
+  // Toast system for in-app notifications
+  const { showToast, Toasts } = useToast();
+  const showError = useCallback(
+    (msg: string) => showToast(msg, 'error'),
+    [showToast],
+  );
+  const showSuccess = useCallback(
+    (msg: string) => showToast(msg, 'success'),
+    [showToast],
+  );
+
   const t = useMemo(() => {
     const lang = resolveLanguage(language);
     return TRANSLATIONS[lang] || TRANSLATIONS.en;
@@ -311,7 +323,7 @@ export const DebugMonitor = ({
         title: t.reportTitle,
       });
     } catch (e) {
-      Alert.alert(t.error, t.couldNotShareReport);
+      showError(t.couldNotShareReport);
     }
   };
 
@@ -324,7 +336,7 @@ export const DebugMonitor = ({
         title: t.reportTitle,
       });
     } catch (e) {
-      Alert.alert(t.error, t.couldNotShareReport);
+      showError(t.couldNotShareReport);
     }
   };
 
@@ -349,7 +361,7 @@ export const DebugMonitor = ({
       }
       await Share.share({ message: parts.join('\n'), title: t.logShareTitle });
     } catch (e) {
-      Alert.alert(t.error, t.couldNotShareLog);
+      showError(t.couldNotShareLog);
     }
   };
 
@@ -393,14 +405,14 @@ export const DebugMonitor = ({
   const handleSaveSettings = (): void => {
     const newUrl = manualUrl.trim();
     if (!newUrl) {
-      Alert.alert(t.error, t.pleaseEnterUrl);
+      showError(t.pleaseEnterUrl);
       return;
     }
 
     try {
       const parsed = new URL(newUrl);
       if (!['http:', 'https:'].includes(parsed.protocol)) {
-        Alert.alert(t.error, t.urlMustStartWith);
+        showError(t.urlMustStartWith);
         return;
       }
 
@@ -410,11 +422,11 @@ export const DebugMonitor = ({
       const hasDot = host.includes('.');
 
       if (!isLocal && !isIp && !hasDot) {
-        Alert.alert(t.error, t.invalidDomainFormat);
+        showError(t.invalidDomainFormat);
         return;
       }
     } catch (e) {
-      Alert.alert(t.error, t.invalidUrlFormat);
+      showError(t.invalidUrlFormat);
       return;
     }
 
@@ -426,7 +438,7 @@ export const DebugMonitor = ({
 
     setManualUrl('');
     if (onBaseUrlChange) onBaseUrlChange(newUrl);
-    Alert.alert(t.success, t.newSourceApplied);
+    showSuccess(t.newSourceApplied);
   };
 
   /**
@@ -1318,6 +1330,7 @@ export const DebugMonitor = ({
           })()}
         </Modal>
       </View>
+      {Toasts}
     </View>
   );
 };
