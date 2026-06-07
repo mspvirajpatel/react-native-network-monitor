@@ -21,6 +21,7 @@ class DebugLogger {
   baseUrl = '';
   customUrls = [];
   notifyTimeout = null;
+  maxLogs = 500;
 
   /**
    * Private constructor to enforce singleton pattern. Use DebugLogger.getInstance() to access the shared instance.
@@ -81,6 +82,28 @@ class DebugLogger {
   }
 
   /**
+   * setMaxLogs
+   *
+   * Configure the maximum number of log entries to retain.
+   * Oldest entries are evicted (LRU) when the cap is exceeded.
+   * @param count - Maximum log count (default 500)
+   */
+  setMaxLogs(count) {
+    this.maxLogs = count;
+    this.trimLogs();
+    this.notify();
+  }
+
+  /**
+   * getMaxLogs
+   *
+   * @returns Current maximum log count
+   */
+  getMaxLogs() {
+    return this.maxLogs;
+  }
+
+  /**
    * removeCustomUrl
    *
    * Remove a custom URL entry and reset base if it was active.
@@ -95,15 +118,30 @@ class DebugLogger {
   }
 
   /**
+   * trimLogs
+   *
+   * Enforce the maxLogs cap by removing the oldest entries (LRU eviction).
+   * Since new entries are unshifted at [0], popping from the end removes
+   * the least recently added entries.
+   */
+  trimLogs() {
+    while (this.logs.length > this.maxLogs) {
+      this.logs.pop();
+    }
+  }
+
+  /**
    * notify
    *
    * Notify all subscribers with the latest logs. Uses a debounce mechanism to batch updates.
+   * Also enforces the memory cap before notifying.
    */
   notify() {
     if (this.notifyTimeout) {
       clearTimeout(this.notifyTimeout);
     }
     this.notifyTimeout = setTimeout(() => {
+      this.trimLogs();
       const currentLogs = this.getLogs();
       this.listeners.forEach(listener => listener(currentLogs));
       this.notifyTimeout = null;
@@ -150,9 +188,6 @@ class DebugLogger {
       requestHeaders: data.headers
     };
     this.logs.unshift(log);
-    if (this.logs.length > 500) {
-      this.logs.pop();
-    }
     this.notify();
     return reqId;
   }
@@ -356,9 +391,6 @@ class DebugLogger {
       message: data.actionType || `[${data.storeName}] State Change`,
       stateData: data
     });
-    if (this.logs.length > 500) {
-      this.logs.pop();
-    }
     this.notify();
   }
   logPerformance(data) {

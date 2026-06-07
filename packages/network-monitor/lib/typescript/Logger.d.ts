@@ -47,6 +47,7 @@ declare class DebugLogger {
     private baseUrl;
     private customUrls;
     private notifyTimeout;
+    private maxLogs;
     /**
      * Private constructor to enforce singleton pattern. Use DebugLogger.getInstance() to access the shared instance.
      */
@@ -84,6 +85,20 @@ declare class DebugLogger {
      */
     addCustomUrl(entry: CustomUrlEntry): void;
     /**
+     * setMaxLogs
+     *
+     * Configure the maximum number of log entries to retain.
+     * Oldest entries are evicted (LRU) when the cap is exceeded.
+     * @param count - Maximum log count (default 500)
+     */
+    setMaxLogs(count: number): void;
+    /**
+     * getMaxLogs
+     *
+     * @returns Current maximum log count
+     */
+    getMaxLogs(): number;
+    /**
      * removeCustomUrl
      *
      * Remove a custom URL entry and reset base if it was active.
@@ -91,9 +106,18 @@ declare class DebugLogger {
      */
     removeCustomUrl(url: string): void;
     /**
+     * trimLogs
+     *
+     * Enforce the maxLogs cap by removing the oldest entries (LRU eviction).
+     * Since new entries are unshifted at [0], popping from the end removes
+     * the least recently added entries.
+     */
+    private trimLogs;
+    /**
      * notify
      *
      * Notify all subscribers with the latest logs. Uses a debounce mechanism to batch updates.
+     * Also enforces the memory cap before notifying.
      */
     private notify;
     /**

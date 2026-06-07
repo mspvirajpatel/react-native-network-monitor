@@ -50,6 +50,7 @@ class DebugLogger {
   private baseUrl: string = '';
   private customUrls: CustomUrlEntry[] = [];
   private notifyTimeout: any = null;
+  private maxLogs: number = 500;
 
   /**
    * Private constructor to enforce singleton pattern. Use DebugLogger.getInstance() to access the shared instance.
@@ -110,6 +111,28 @@ class DebugLogger {
   }
 
   /**
+   * setMaxLogs
+   *
+   * Configure the maximum number of log entries to retain.
+   * Oldest entries are evicted (LRU) when the cap is exceeded.
+   * @param count - Maximum log count (default 500)
+   */
+  public setMaxLogs(count: number) {
+    this.maxLogs = count;
+    this.trimLogs();
+    this.notify();
+  }
+
+  /**
+   * getMaxLogs
+   *
+   * @returns Current maximum log count
+   */
+  public getMaxLogs(): number {
+    return this.maxLogs;
+  }
+
+  /**
    * removeCustomUrl
    *
    * Remove a custom URL entry and reset base if it was active.
@@ -124,15 +147,30 @@ class DebugLogger {
   }
 
   /**
+   * trimLogs
+   *
+   * Enforce the maxLogs cap by removing the oldest entries (LRU eviction).
+   * Since new entries are unshifted at [0], popping from the end removes
+   * the least recently added entries.
+   */
+  private trimLogs() {
+    while (this.logs.length > this.maxLogs) {
+      this.logs.pop();
+    }
+  }
+
+  /**
    * notify
    *
    * Notify all subscribers with the latest logs. Uses a debounce mechanism to batch updates.
+   * Also enforces the memory cap before notifying.
    */
   private notify() {
     if (this.notifyTimeout) {
       clearTimeout(this.notifyTimeout);
     }
     this.notifyTimeout = setTimeout(() => {
+      this.trimLogs();
       const currentLogs = this.getLogs();
       this.listeners.forEach((listener) => listener(currentLogs));
       this.notifyTimeout = null;
@@ -192,9 +230,6 @@ class DebugLogger {
     };
 
     this.logs.unshift(log);
-    if (this.logs.length > 500) {
-      this.logs.pop();
-    }
     this.notify();
     return reqId;
   }
@@ -423,9 +458,6 @@ class DebugLogger {
       message: data.actionType || `[${data.storeName}] State Change`,
       stateData: data,
     });
-    if (this.logs.length > 500) {
-      this.logs.pop();
-    }
     this.notify();
   }
 

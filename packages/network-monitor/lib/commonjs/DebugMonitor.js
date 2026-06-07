@@ -170,6 +170,13 @@ const DebugMonitor = ({
       setActiveTab(availableTabs[0] || 'ALL');
     }
   }, [availableTabs, activeTab]);
+
+  // Sync the maxLogs prop to the Logger so the cap is enforced at the source
+  (0, _react.useEffect)(() => {
+    if (maxLogs && maxLogs > 0) {
+      _Logger.Logger.setMaxLogs(maxLogs);
+    }
+  }, [maxLogs]);
   (0, _react.useEffect)(() => {
     const unsubscribe = _Logger.Logger.subscribe(newLogs => {
       setLogs(newLogs);

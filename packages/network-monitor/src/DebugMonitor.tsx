@@ -234,6 +234,13 @@ export const DebugMonitor = ({
     }
   }, [availableTabs, activeTab]);
 
+  // Sync the maxLogs prop to the Logger so the cap is enforced at the source
+  useEffect(() => {
+    if (maxLogs && maxLogs > 0) {
+      Logger.setMaxLogs(maxLogs);
+    }
+  }, [maxLogs]);
+
   useEffect(() => {
     const unsubscribe = Logger.subscribe((newLogs) => {
       setLogs(newLogs);
