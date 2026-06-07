@@ -128,6 +128,11 @@ export interface Translation {
   graphqlQuery: string;
   graphqlVariables: string;
 
+  // Waterfall / Timeline
+  waterfall: string;
+  list: string;
+  noTimelineData: string;
+
   // Detail formatting
   ms: string;
   kb: string;
@@ -264,6 +269,10 @@ const en: Translation = {
   graphqlQuery: 'QUERY',
   graphqlVariables: 'VARIABLES',
 
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
+
   ms: 'ms',
   kb: 'kb',
   error: 'Error',
@@ -396,6 +405,10 @@ const az: Translation = {
   graphqlOperationName: 'OPERATION NAME',
   graphqlQuery: 'QUERY',
   graphqlVariables: 'VARIABLES',
+
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
 
   ms: 'ms',
   kb: 'kb',
@@ -530,6 +543,10 @@ const ru: Translation = {
   graphqlQuery: 'ЗАПРОС',
   graphqlVariables: 'ПЕРЕМЕННЫЕ',
 
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
+
   ms: 'мс',
   kb: 'кб',
   error: 'Ошибка',
@@ -662,6 +679,10 @@ const tr: Translation = {
   graphqlOperationName: 'İŞLEM ADI',
   graphqlQuery: 'SORGU',
   graphqlVariables: 'DEĞİŞKENLER',
+
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
 
   ms: 'ms',
   kb: 'kb',
@@ -796,6 +817,10 @@ const hi: Translation = {
   graphqlQuery: 'क्वेरी',
   graphqlVariables: 'चर',
 
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
+
   ms: 'मि.से.',
   kb: 'कि.बा.',
   error: 'त्रुटि',
@@ -928,6 +953,10 @@ const gu: Translation = {
   graphqlOperationName: 'ઓપરેશન નામ',
   graphqlQuery: 'ક્વેરી',
   graphqlVariables: 'વેરિયેબલ્સ',
+
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
 
   ms: 'મિ.સે.',
   kb: 'કિ.બા.',
@@ -1062,6 +1091,10 @@ const es: Translation = {
   graphqlQuery: 'CONSULTA',
   graphqlVariables: 'VARIABLES',
 
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
+
   ms: 'ms',
   kb: 'kb',
   error: 'Error',
@@ -1194,6 +1227,10 @@ const fr: Translation = {
   graphqlOperationName: 'NOM DE L\'OPÉRATION',
   graphqlQuery: 'REQUÊTE',
   graphqlVariables: 'VARIABLES',
+
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
 
   ms: 'ms',
   kb: 'ko',
@@ -1328,6 +1365,10 @@ const de: Translation = {
   graphqlQuery: 'ABFRAGE',
   graphqlVariables: 'VARIABLEN',
 
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
+
   ms: 'ms',
   kb: 'KB',
   error: 'Fehler',
@@ -1460,6 +1501,10 @@ const ar: Translation = {
   graphqlOperationName: 'اسم العملية',
   graphqlQuery: 'استعلام',
   graphqlVariables: 'متغيرات',
+
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
 
   ms: 'م.ث',
   kb: 'ك.ب',
@@ -1594,6 +1639,10 @@ const zh: Translation = {
   graphqlQuery: '查询',
   graphqlVariables: '变量',
 
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
+
   ms: '毫秒',
   kb: 'KB',
   error: '错误',
@@ -1724,6 +1773,10 @@ const pt: Translation = {
   graphqlOperationName: 'NOME DA OPERAÇÃO',
   graphqlQuery: 'CONSULTA',
   graphqlVariables: 'VARIÁVEIS',
+
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
 
   ms: 'ms',
   kb: 'kb',
@@ -1857,6 +1910,10 @@ const ja: Translation = {
   graphqlOperationName: '操作名',
   graphqlQuery: 'クエリ',
   graphqlVariables: '変数',
+
+  waterfall: 'Waterfall',
+  list: 'List',
+  noTimelineData: 'No timeline data',
 
   ms: 'ミリ秒',
   kb: 'KB',

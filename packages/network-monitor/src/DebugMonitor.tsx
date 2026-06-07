@@ -32,6 +32,7 @@ import SettingsPanel from './panels/SettingsPanel';
 import StorePanel from './panels/StorePanel';
 import PerformancePanel from './panels/PerformancePanel';
 import WebSocketPanel from './panels/WebSocketPanel';
+import TimelinePanel from './panels/TimelinePanel';
 import {
   TRANSLATIONS,
   resolveLanguage,
@@ -211,6 +212,7 @@ export const DebugMonitor = ({
   const [fpsStats, setFpsStats] = useState<FpsStats | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showWaterfall, setShowWaterfall] = useState(false);
   const flatListRef = useRef<FlatList<LogEntry>>(null);
   const [perfRunning, setPerfRunning] = useState(isPerformanceMonitorRunning());
   const [deviceInfo] = useState<DeviceInfoData>(getDeviceInfo());
@@ -721,6 +723,16 @@ export const DebugMonitor = ({
                     </TouchableOpacity>
                   );
                 })}
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={showWaterfall ? t.list : t.waterfall}
+                  style={[styles.filterPill, showWaterfall && styles.filterPillActive]}
+                  onPress={() => setShowWaterfall(!showWaterfall)}
+                >
+                  <Text style={[styles.filterPillText, showWaterfall ? styles.filterPillTextActive : styles.filterPillTextInactive]}>
+                    {showWaterfall ? t.list : t.waterfall}
+                  </Text>
+                </TouchableOpacity>
               </View>
             ) : null}
           </View>
@@ -766,6 +778,14 @@ export const DebugMonitor = ({
               setSelectedLog(log);
               setDetailTab('RESPONSE');
             }}
+          />
+        ) : activeTab === 'NETWORK' && showWaterfall ? (
+          <TimelinePanel
+            logs={filteredLogs}
+            C={C}
+            t={t}
+            enabled={showWaterfall}
+            onToggle={() => setShowWaterfall(false)}
           />
         ) : (
           <FlatList
