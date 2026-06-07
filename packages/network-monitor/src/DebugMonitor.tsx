@@ -20,14 +20,17 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styleSheet, { getColors, DARK_COLORS, type ThemeColors } from './DebugMonitorStyles';
-import { Logger, LogEntry, CustomUrlEntry } from './Logger';
+import { Logger, LogEntry } from './Logger';
 import { FpsStats, subscribeToFps, isPerformanceMonitorRunning, startPerformanceMonitor, stopPerformanceMonitor, destroyPerformanceMonitor } from './PerformanceMonitor';
 import { getDeviceInfo, DeviceInfoData } from './DeviceInfo';
-import { generateExportReport, formatReportAsText } from './ExportReport';
 import { isInternalUrl } from './NetworkMonitor';
-import { saveReportToJson, saveReportToText } from './FileExporter';
 import { useDebugger } from './DebugContext';
 import { useToast, type ToastType } from './Toast';
+import LogItemAnimated from './LogItemAnimated';
+import SettingsPanel from './panels/SettingsPanel';
+import StorePanel from './panels/StorePanel';
+import PerformancePanel from './panels/PerformancePanel';
+import WebSocketPanel from './panels/WebSocketPanel';
 import {
   TRANSLATIONS,
   resolveLanguage,
@@ -203,7 +206,6 @@ export const DebugMonitor = ({
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'OK' | 'ERR'>('ALL');
   const [baseUrl, setBaseUrl] = useState(Logger.getBaseUrl());
   const [manualUrl, setManualUrl] = useState('');
-  const [, setCustomUrlEntries] = useState<CustomUrlEntry[]>(Logger.getCustomUrls());
   const [filterMethod] = useState<string | 'ALL'>('ALL');
   const [fpsStats, setFpsStats] = useState<FpsStats | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -406,31 +408,6 @@ export const DebugMonitor = ({
     );
   };
 
-  const handleExportJson = async (): Promise<void> => {
-    try {
-      const report = generateExportReport(logs);
-      await Share.share({
-        message: JSON.stringify(report, null, 2),
-        title: t.reportTitle,
-      });
-    } catch (e) {
-      showError(t.couldNotShareReport);
-    }
-  };
-
-  const handleExportText = async (): Promise<void> => {
-    try {
-      const report = generateExportReport(logs);
-      const text = formatReportAsText(report);
-      await Share.share({
-        message: text,
-        title: t.reportTitle,
-      });
-    } catch (e) {
-      showError(t.couldNotShareReport);
-    }
-  };
-
   const handleShareLog = async (log: LogEntry): Promise<void> => {
     try {
       const parts: string[] = [];
@@ -484,99 +461,6 @@ export const DebugMonitor = ({
       }
     }
     return curl;
-  };
-
-  /**
-   * handleSaveSettings
-   *
-   * Validate and apply manual base URL settings supplied by the user.
-   *
-   * @returns void
-   */
-  const handleSaveSettings = (): void => {
-    const newUrl = manualUrl.trim();
-    if (!newUrl) {
-      showError(t.pleaseEnterUrl);
-      return;
-    }
-
-    try {
-      const parsed = new URL(newUrl);
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
-        showError(t.urlMustStartWith);
-        return;
-      }
-
-      const host = parsed.hostname;
-      const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
-      const isLocal = host === 'localhost';
-      const hasDot = host.includes('.');
-
-      if (!isLocal && !isIp && !hasDot) {
-        showError(t.invalidDomainFormat);
-        return;
-      }
-    } catch (e) {
-      showError(t.invalidUrlFormat);
-      return;
-    }
-
-    Logger.setBaseUrl(newUrl);
-    setBaseUrl(newUrl);
-
-    Logger.addCustomUrl({ title: `Custom ${Logger.getCustomUrls().length + 1}`, url: newUrl });
-    setCustomUrlEntries(Logger.getCustomUrls());
-
-    setManualUrl('');
-    if (onBaseUrlChange) onBaseUrlChange(newUrl);
-    showSuccess(t.newSourceApplied);
-  };
-
-  /**
-   * handleRemoveCustomUrl
-   *
-   * Remove a custom URL entry from the Logger and update local state.
-   *
-   * @param url - URL string to remove
-   * @returns void
-   */
-  const handleRemoveCustomUrl = (url: string): void => {
-    Logger.removeCustomUrl(url);
-    setCustomUrlEntries(Logger.getCustomUrls());
-    setBaseUrl(Logger.getBaseUrl());
-  };
-
-  /** Animated wrapper that fades + slides in on mount for new log entries */
-  const LogItemAnimated = ({
-    children,
-    index,
-  }: {
-    children: React.ReactNode;
-    index?: number;
-  }): React.ReactElement => {
-    const opacity = useRef(new Animated.Value(0)).current;
-    const translateY = useRef(new Animated.Value(12)).current;
-
-    useEffect(() => {
-      Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }, [opacity, translateY]);
-
-    return (
-      <Animated.View style={{ opacity, transform: [{ translateY }] }}>
-        {children}
-      </Animated.View>
-    );
   };
 
   /**
@@ -645,490 +529,6 @@ export const DebugMonitor = ({
   };
 
 
-
-  /**
-   * renderSettings
-   *
-   * Render settings panel including environment selection and custom URLs.
-   *
-   * @returns JSX.Element
-   */
-  const renderSettings = (): React.ReactElement => {
-    const predefinedList = baseUrls ? (Array.isArray(baseUrls) ? baseUrls : []) : [];
-    const allCustoms = Logger.getCustomUrls();
-
-    const allSources: { title: string; url?: string; type: 'env' | 'url'; val: any }[] = [];
-
-    if (prodUrl) {
-      allSources.push({ title: t.productionApi, url: prodUrl, type: 'url', val: prodUrl });
-    }
-    if (testUrl) {
-      allSources.push({ title: t.testApi, url: testUrl, type: 'url', val: testUrl });
-    }
-
-    if (envConfig) {
-      allSources.push({ title: t.productive, type: 'env', val: 'prod' });
-      allSources.push({ title: t.demonstration, type: 'env', val: 'demo' });
-    }
-
-    predefinedList.forEach((item) => {
-      const title = typeof item === 'string' ? item : item.title;
-      const url = typeof item === 'string' ? item : item.url;
-      allSources.push({ title, url, type: 'url', val: url });
-    });
-
-    allCustoms.forEach((item) => {
-      allSources.push({ title: item.title, url: item.url, type: 'url', val: item.url });
-    });
-
-    return (
-      <ScrollView style={styles.settingsContainer}>
-        {allSources.length > 0 ? (
-          <View style={styles.settingsSection}>
-            <View style={styles.settingsSectionHeader}>
-              <View style={styles.settingsSectionLine} />
-              <Text style={styles.settingsSectionTitle}>{t.selectSource}</Text>
-            </View>
-            <View style={styles.settingsCard}>
-              {allSources.map((item: any, index: number) => {
-                const isUrlActive = baseUrl !== '' && baseUrl === item.val;
-                const isEnvActive =
-                  baseUrl === '' && item.type === 'env' && envConfig?.currentEnv === item.val;
-                const isActive = item.type === 'env' ? isEnvActive : isUrlActive;
-
-                const isCustom = allCustoms.some((u) => u.url === item.val);
-
-                return (
-                  <View key={index} style={[styles.urlOption, isActive && styles.urlOptionActive]}>
-                    <TouchableOpacity
-                      style={styles.urlOptionInfo}
-                      onPress={() => {
-                        if (item.type === 'env') {
-                          setBaseUrl('');
-                          Logger.setBaseUrl('');
-                          envConfig?.onEnvChange(item.val);
-                        } else {
-                          setBaseUrl(item.val);
-                          Logger.setBaseUrl(item.val);
-                          if (onBaseUrlChange) onBaseUrlChange(item.val);
-                        }
-                      }}
-                    >
-                      <Text
-                        style={[styles.urlOptionTitle, isActive && styles.urlOptionTitleActive]}
-                      >
-                        {item.title}
-                      </Text>
-                      {item.url ? (
-                        <Text style={styles.urlOptionUrl} numberOfLines={1}>
-                          {item.url}
-                        </Text>
-                      ) : null}
-                    </TouchableOpacity>
-                    <View style={styles.optionActions}>
-                      {isCustom ? (
-                        <TouchableOpacity
-                          style={styles.deleteBtn}
-                          onPress={() => handleRemoveCustomUrl(item.val)}
-                        >
-                          <Text style={styles.deleteBtnText}>✕</Text>
-                        </TouchableOpacity>
-                      ) : null}
-                      {isActive ? <View style={styles.activeDot} /> : null}
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        ) : null}
-
-        <View style={[styles.settingsSection, { marginTop: allSources.length > 0 ? 32 : 0 }]}>
-          <View style={styles.settingsSectionHeader}>
-            <View style={styles.settingsSectionLine} />
-            <Text style={styles.settingsSectionTitle}>{t.manualEntry}</Text>
-          </View>
-          <View style={styles.settingsCard}>
-            <View style={styles.cardInner}>
-              <Text style={styles.inputLabel}>{t.customUrl?.toUpperCase() || ''}</Text>
-              <TextInput
-                style={styles.textInput}
-                value={manualUrl}
-                placeholder={t.manualUrlPlaceholder}
-                placeholderTextColor={C.textDim}
-                autoCapitalize="none"
-                keyboardType="url"
-                onChangeText={setManualUrl}
-              />
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveSettings}>
-                <Text style={styles.saveBtnText}>{t.applyChanges}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.settingsSection, { marginTop: 32 }]}>
-            <View style={styles.settingsSectionHeader}>
-              <View style={styles.settingsSectionLine} />
-              <Text style={styles.settingsSectionTitle}>Theme</Text>
-          </View>
-          <View style={styles.settingsCard}>
-            <View style={[styles.cardInner, { flexDirection: 'row', gap: 8 }]}>
-              {(['light', 'dark', 'auto'] as const).map((mode) => {
-                const active = selectedTheme === mode;
-                return (
-                  <TouchableOpacity
-                    key={mode}
-                    activeOpacity={0.7}
-                    onPress={() => setSelectedTheme(mode)}
-                    style={[
-                      styles.optionChip,
-                      {
-                        backgroundColor: active ? C.primary : C.surfaceLight,
-                        borderColor: active ? C.primary : C.border,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.optionChipText,
-                        { color: active ? '#FFFFFF' : C.text },
-                      ]}
-                    >
-                      {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.settingsSection, { marginTop: 32 }]}>
-            <View style={styles.settingsSectionHeader}>
-              <View style={styles.settingsSectionLine} />
-              <Text style={styles.settingsSectionTitle}>{t.deviceInfo}</Text>
-          </View>
-          <View style={styles.settingsCard}>
-            <View style={styles.cardInner}>
-              {renderDeviceInfoSection()}
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.settingsSection, { marginTop: 32 }]}>
-            <View style={styles.settingsSectionHeader}>
-              <View style={styles.settingsSectionLine} />
-              <Text style={styles.settingsSectionTitle}>{t.advancedTools}</Text>
-          </View>
-          <View style={styles.settingsCard}>
-            <View style={styles.cardInner}>
-              <TouchableOpacity style={[styles.toolBtn, { margin: 0, marginBottom: 12 }]} onPress={handleExportJson}>
-                <Text style={styles.toolBtnText}>{t.shareJsonReport}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.toolBtn, { margin: 0, marginBottom: 16 }]} onPress={handleExportText}>
-                <Text style={styles.toolBtnText}>{t.shareTextReport}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={[styles.toolBtn, { margin: 0, marginBottom: 12, borderColor: C.accent + '40' }]} onPress={() => saveReportToJson(logs)}>
-                <Text style={[styles.toolBtnText, { color: C.accent }]}>{t.saveJsonReportToFile}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.toolBtn, { margin: 0, marginBottom: 16, borderColor: C.accent + '40' }]} onPress={() => saveReportToText(logs)}>
-                <Text style={[styles.toolBtnText, { color: C.accent }]}>{t.saveTextReportToFile}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.toolBtn, { margin: 0, borderColor: C.error + '40' }]}
-                onPress={handleClearLogs}
-              >
-                <Text style={[styles.toolBtnText, { color: C.error }]}>{t.wipeAllRecords}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-        <View style={{ height: 60 }} />
-      </ScrollView>
-    );
-  };
-  const renderStoreLogs = (): React.ReactElement => {
-    const storeLogs = logs.filter((l: LogEntry) => l.type === 'action');
-    if (storeLogs.length === 0) {
-      return (
-        <View style={styles.wsContainer}>
-          <View style={[styles.perfCard, { alignItems: 'center', padding: 40 }]}>
-            <Text style={{ fontSize: 32, marginBottom: 12 }}>🗄️</Text>
-            <Text style={[styles.perfLabel, { textAlign: 'center', marginBottom: 4 }]}>{t.noStoreActivity}</Text>
-            <Text style={[styles.perfLabel, { color: C.textSubtle, fontSize: 10, textAlign: 'center' }]}>
-              {t.storeSubtitle}
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
-    return (
-      <FlatList
-        data={storeLogs}
-        renderItem={({ item }: { item: LogEntry }) => {
-          const sd = item.stateData;
-          const hasDiff = sd?.diff && Object.keys(sd.diff).length > 0;
-          const changedKeys = hasDiff ? Object.keys(sd!.diff!).join(', ') : null;
-          return (
-            <LogItemAnimated>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.logItem}
-                onPress={() => {
-                  setSelectedLog(item);
-                  setDetailTab('RESPONSE');
-                }}
-              >
-                <View style={[styles.logIndicator, { backgroundColor: C.secondary }]} />
-                <View style={styles.logBody}>
-                  <View style={styles.logRow}>
-                    <View style={[styles.logChip, { backgroundColor: C.secondary + '18' }]}>
-                      <Text style={[styles.logChipText, { color: C.secondary }]}>
-                        {sd?.actionType ? sd.actionType : t.action}
-                      </Text>
-                    </View>
-                    <Text style={styles.logTime}>
-                      {new Date(item.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </Text>
-                  </View>
-                  <Text style={styles.logUrl} numberOfLines={2}>
-                    [{sd?.storeName || 'Store'}] {sd?.actionType || t.state}
-                  </Text>
-                  {changedKeys ? (
-                    <View style={styles.logMetaBox}>
-                      <View style={styles.metaBadge}>
-                        <Text style={styles.logMeta}>{t.changedKeys}: {changedKeys}</Text>
-                      </View>
-                    </View>
-                  ) : sd?.snapshot ? (
-                    <View style={styles.logMetaBox}>
-                      <View style={styles.metaBadge}>
-                        <Text style={styles.logMeta}>{t.snapshot}</Text>
-                      </View>
-                    </View>
-                  ) : null}
-                </View>
-              </TouchableOpacity>
-            </LogItemAnimated>
-          );
-        }}
-        keyExtractor={(item: LogEntry) => item.id}
-        getItemLayout={(_data, index) => ({
-          length: LOG_ITEM_HEIGHT,
-          offset: LOG_ITEM_HEIGHT * index,
-          index,
-        })}
-        contentContainerStyle={[styles.listContent, storeLogs.length === 0 && { flex: 1 }]}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>🗄️</Text>
-            <Text style={styles.emptyText}>{t.noStoreActivity}</Text>
-            <Text style={styles.emptySubText}>{t.storeSubtitle}</Text>
-          </View>
-        }
-      />
-    );
-  };
-
-  const renderPerformance = (): React.ReactElement => {
-    const fps = fpsStats;
-    const fpsPercent = fps ? Math.min((fps.fps / 60) * 100, 100) : 0;
-    const barColor = !fps ? C.textDim : fps.fps >= 55 ? C.success : fps.fps >= 30 ? C.warning : C.error;
-    const fpsLabel = !fps ? '--' : `${fps.fps}`;
-
-    return (
-      <ScrollView style={styles.perfContainer}>
-        <View style={styles.perfToggle}>
-          <Text style={styles.perfToggleText}>
-            {perfRunning ? t.fpsMonitorActive : t.fpsMonitorOff}
-          </Text>
-          <TouchableOpacity
-            style={[
-              styles.toggleTrack,
-              perfRunning ? styles.toggleTrackActive : styles.toggleTrackInactive
-            ]}
-            onPress={() => {
-              if (perfRunning) {
-                stopPerformanceMonitor();
-                setPerfRunning(false);
-              } else {
-                startPerformanceMonitor();
-                setPerfRunning(true);
-              }
-            }}
-          >
-            <View style={[styles.toggleThumb, { alignSelf: perfRunning ? 'flex-end' : 'flex-start' }]} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.perfCard}>
-          <View style={styles.perfRow}>
-            <Text style={styles.perfLabel}>{t.currentFps}</Text>
-            <Text style={[styles.perfValue, !fps ? {} : fps.fps >= 55 ? styles.perfValueGood : fps.fps >= 30 ? styles.perfValueWarning : styles.perfValueError]}>
-              {fpsLabel}
-            </Text>
-          </View>
-          <View style={styles.fpsBar}>
-            <View style={[styles.fpsBarFill, { width: `${fpsPercent}%`, backgroundColor: barColor }]} />
-          </View>
-        </View>
-
-        {fps && (
-          <>
-            <View style={styles.perfCard}>
-              <View style={styles.perfRow}>
-                <Text style={styles.perfLabel}>{t.averageFps}</Text>
-                <Text style={styles.perfValue}>{fps.averageFps}</Text>
-              </View>
-              <View style={styles.perfRow}>
-                <Text style={styles.perfLabel}>{t.minFps}</Text>
-                <Text style={[styles.perfValue, fps.minFps < 30 ? styles.perfValueError : styles.perfValueGood]}>{fps.minFps}</Text>
-              </View>
-              <View style={styles.perfRow}>
-                <Text style={styles.perfLabel}>{t.maxFps}</Text>
-                <Text style={styles.perfValue}>{fps.maxFps}</Text>
-              </View>
-              <View style={styles.perfRow}>
-                <Text style={styles.perfLabel}>{t.droppedFrames}</Text>
-                <Text style={[styles.perfValue, fps.droppedFrames > 10 ? styles.perfValueWarning : styles.perfValueGood]}>{fps.droppedFrames}</Text>
-              </View>
-            </View>
-
-            <View style={styles.perfCard}>
-              <Text style={styles.perfLabel}>{t.fpsHistory}</Text>
-              <View style={{ height: 80, flexDirection: 'row', alignItems: 'flex-end', gap: 1, marginTop: 12 }}>
-                {fps.history.length > 0 ? fps.history.map((value: number, i: number) => {
-                  const barHeight = Math.max(4, (value / 60) * 80);
-                  return (
-                    <View
-                      key={i}
-                      style={{
-                        flex: 1,
-                        height: barHeight,
-                        backgroundColor: value >= 55 ? C.success : value >= 30 ? C.warning : C.error,
-                        borderRadius: 1,
-                        opacity: 0.5 + (i / fps.history.length) * 0.5
-                      }}
-                    />
-                  );
-                }) : (
-                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: C.textDim, fontSize: 10 }}>Collecting data...</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </>
-        )}
-
-        {!fps && (
-          <View style={styles.perfCard}>
-            <Text style={[styles.perfLabel, { textAlign: 'center', marginVertical: 20 }]}>
-              {t.fpsEmpty}
-            </Text>
-          </View>
-        )}
-
-        <View style={{ height: 60 }} />
-      </ScrollView>
-    );
-  };
-
-  const renderWebSocket = (): React.ReactElement => {
-    const wsLogs = logs.filter((l: LogEntry) => l.type === 'websocket');
-
-    if (wsLogs.length === 0) {
-      return (
-        <View style={styles.wsContainer}>
-          <View style={[styles.perfCard, { alignItems: 'center', padding: 40 }]}>
-            <Text style={{ fontSize: 32, marginBottom: 12 }}>🔌</Text>
-            <Text style={[styles.perfLabel, { textAlign: 'center', marginBottom: 4 }]}>{t.noWebSocketActivity}</Text>
-            <Text style={[styles.perfLabel, { color: C.textSubtle, fontSize: 10, textAlign: 'center' }]}>
-              {t.wsSubtitle}
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
-    return (
-      <ScrollView style={styles.wsContainer}>
-        {wsLogs.map((log) => {
-          const isOpen = log.message?.includes('OPEN');
-          const isClose = log.message?.includes('CLOSE');
-          const isError = log.message?.includes('ERROR');
-          const badgeColor = isOpen ? C.success : isClose ? C.textDim : isError ? C.error : C.secondary;
-
-          return (
-            <LogItemAnimated key={log.id}>
-              <View style={styles.wsItem}>
-                <View style={styles.wsHeader}>
-                  <View style={[styles.wsBadge, { backgroundColor: badgeColor + '20' }]}>
-                    <Text style={[styles.wsBadgeText, { color: badgeColor }]}>
-                      {isOpen ? t.wsOpen : isClose ? t.wsClose : isError ? t.wsError : t.wsMsg}
-                    </Text>
-                  </View>
-                  <Text style={styles.wsUrl} numberOfLines={1}>{log.url}</Text>
-                  <Text style={styles.wsTime}>
-                    {new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                  </Text>
-                </View>
-                {log.message && (
-                  <Text style={styles.wsMessage} numberOfLines={3}>{log.message}</Text>
-                )}
-                {log.requestData && (
-                  <View style={[styles.jsonBox, { marginTop: 8, padding: 10 }]}>
-                    <Text style={styles.jsonText} numberOfLines={5}>
-                      {typeof log.requestData === 'string' ? log.requestData : JSON.stringify(log.requestData, null, 2)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </LogItemAnimated>
-          );
-        })}
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    );
-  };
-
-  const renderDeviceInfoSection = (): React.ReactElement => {
-    const info = deviceInfo;
-    return (
-      <View>
-        <Text style={styles.deviceSectionTitle}>{t.device}</Text>
-        <View style={styles.deviceRow}>
-          <Text style={styles.deviceLabel}>{t.platform}</Text>
-          <Text style={styles.deviceValue}>{info.platform} {info.osVersion}</Text>
-        </View>
-        <View style={styles.deviceRow}>
-          <Text style={styles.deviceLabel}>{t.model}</Text>
-          <Text style={styles.deviceValue}>{info.deviceName}</Text>
-        </View>
-        <View style={styles.deviceRow}>
-          <Text style={styles.deviceLabel}>{t.screen}</Text>
-          <Text style={styles.deviceValue}>{info.screenWidth}x{info.screenHeight} @{info.screenScale}x</Text>
-        </View>
-        <Text style={[styles.deviceSectionTitle, { marginTop: 24 }]}>{t.application}</Text>
-        {info.appVersion && (
-          <View style={styles.deviceRow}>
-            <Text style={styles.deviceLabel}>{t.appVersion}</Text>
-            <Text style={styles.deviceValue}>{info.appVersion}</Text>
-          </View>
-        )}
-        {info.buildVersion && (
-          <View style={styles.deviceRow}>
-            <Text style={styles.deviceLabel}>{t.buildVersion}</Text>
-            <Text style={styles.deviceValue}>{info.buildVersion}</Text>
-          </View>
-        )}
-      </View>
-    );
-  };
 
   const { top, bottom } = useSafeAreaInsets();
   return (
@@ -1237,13 +637,46 @@ export const DebugMonitor = ({
         ) : null}
 
         {activeTab === 'SETTINGS' ? (
-          renderSettings()
+          <SettingsPanel
+            baseUrls={baseUrls}
+            prodUrl={prodUrl}
+            testUrl={testUrl}
+            envConfig={envConfig}
+            onBaseUrlChange={onBaseUrlChange}
+            C={C}
+            t={t}
+            baseUrl={baseUrl}
+            manualUrl={manualUrl}
+            selectedTheme={selectedTheme}
+            logs={logs}
+            deviceInfo={deviceInfo}
+            onSetBaseUrl={setBaseUrl}
+            onSetManualUrl={setManualUrl}
+            onSetSelectedTheme={setSelectedTheme}
+            showError={showError}
+            showSuccess={showSuccess}
+          />
         ) : activeTab === 'PERFORMANCE' ? (
-          renderPerformance()
+          <PerformancePanel
+            fpsStats={fpsStats}
+            perfRunning={perfRunning}
+            C={C}
+            t={t}
+            onTogglePerf={setPerfRunning}
+          />
         ) : activeTab === 'WEBSOCKET' ? (
-          renderWebSocket()
+          <WebSocketPanel logs={logs} C={C} t={t} />
         ) : activeTab === 'STORE' ? (
-          renderStoreLogs()
+          <StorePanel
+            logs={logs}
+            C={C}
+            t={t}
+            LOG_ITEM_HEIGHT={LOG_ITEM_HEIGHT}
+            onSelectLog={(log) => {
+              setSelectedLog(log);
+              setDetailTab('RESPONSE');
+            }}
+          />
         ) : (
           <FlatList
             ref={flatListRef}
