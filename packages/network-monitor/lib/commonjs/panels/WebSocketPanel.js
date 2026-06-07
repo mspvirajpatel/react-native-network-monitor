@@ -58,7 +58,9 @@ const WebSocketPanel = ({
     return /*#__PURE__*/_react.default.createElement(_LogItemAnimated.default, {
       key: log.id
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.wsItem
+      style: styles.wsItem,
+      accessibilityRole: "summary",
+      accessibilityLabel: `WebSocket ${isOpen ? 'open' : isClose ? 'close' : isError ? 'error' : 'message'}: ${log.url || ''}`
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: styles.wsHeader
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {

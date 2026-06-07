@@ -487,6 +487,8 @@ export const DebugMonitor = ({
     const row = (
       <TouchableOpacity
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.method || item.type || 'log'}: ${item.url || item.message || ''}`}
         style={styles.logItem}
         onPress={() => {
           setSelectedLog(item);
@@ -557,6 +559,8 @@ export const DebugMonitor = ({
             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity
+                accessibilityLabel={t.wipeAllRecords || 'Clear logs'}
+                accessibilityRole="button"
                 style={[styles.headerBtn, { backgroundColor: C.errorDim }]}
                 onPress={handleClearLogs}
               >
@@ -564,7 +568,12 @@ export const DebugMonitor = ({
                   ✕
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.headerBtn} onPress={onClose}>
+              <TouchableOpacity
+                accessibilityLabel="Close"
+                accessibilityRole="button"
+                style={styles.headerBtn}
+                onPress={onClose}
+              >
                 <Text style={[styles.headerBtnText, { fontSize: 13 }]}>⌄</Text>
               </TouchableOpacity>
             </View>
@@ -577,33 +586,39 @@ export const DebugMonitor = ({
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.tabScroll}
           >
-            {availableTabs.map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                style={styles.tabItem}
-                onPress={() => setActiveTab(tab)}
-              >
-                <Text style={[styles.tabText, activeTab === tab ? styles.tabTextActive : styles.tabTextInactive]}>
-                  {tab === 'ALL'
-                    ? t.all
-                    : tab === 'NETWORK'
-                      ? t.network
-                      : tab === 'LOGS'
-                        ? t.logs
-                        : tab === 'WEBSOCKET'
-                          ? t.ws
-                          : tab === 'PERFORMANCE'
-                            ? t.fps
-                            : tab === 'STORE'
-                              ? t.store
-                              : t.settings}
-                  <Text style={styles.tabBadge}>
-                    {tab !== 'SETTINGS' ? ` ${(tabCounts as any)[tab]}` : ''}
+            {availableTabs.map((tab) => {
+              const tabLabel = tab === 'ALL'
+                ? t.all
+                : tab === 'NETWORK'
+                  ? t.network
+                  : tab === 'LOGS'
+                    ? t.logs
+                    : tab === 'WEBSOCKET'
+                      ? t.ws
+                      : tab === 'PERFORMANCE'
+                        ? t.fps
+                        : tab === 'STORE'
+                          ? t.store
+                          : t.settings;
+              return (
+                <TouchableOpacity
+                  key={tab}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: activeTab === tab }}
+                  accessibilityLabel={`${tabLabel}${tab !== 'SETTINGS' ? `, ${(tabCounts as any)[tab]} items` : ''}`}
+                  style={styles.tabItem}
+                  onPress={() => setActiveTab(tab)}
+                >
+                  <Text style={[styles.tabText, activeTab === tab ? styles.tabTextActive : styles.tabTextInactive]}>
+                    {tabLabel}
+                    <Text style={styles.tabBadge}>
+                      {tab !== 'SETTINGS' ? ` ${(tabCounts as any)[tab]}` : ''}
+                    </Text>
                   </Text>
-                </Text>
-                {activeTab === tab ? <View style={styles.tabActiveLine} /> : null}
-              </TouchableOpacity>
-            ))}
+                  {activeTab === tab ? <View style={styles.tabActiveLine} /> : null}
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
 
@@ -612,6 +627,7 @@ export const DebugMonitor = ({
             <View style={styles.searchRow}>
               <View style={styles.searchBox}>
                 <TextInput
+                  accessibilityLabel={searchPlaceholder || t.search}
                   style={styles.searchInput}
                   placeholder={searchPlaceholder || t.search}
                   placeholderTextColor={C.textDim}
@@ -619,7 +635,11 @@ export const DebugMonitor = ({
                   onChangeText={setSearchQuery}
                 />
                 {searchQuery.length > 0 ? (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear search"
+                    onPress={() => setSearchQuery('')}
+                  >
                     <Text style={styles.clearSearch}>✕</Text>
                   </TouchableOpacity>
                 ) : null}
@@ -627,17 +647,23 @@ export const DebugMonitor = ({
             </View>
             {activeTab === 'NETWORK' ? (
               <View style={styles.filterRow}>
-                {(['ALL', 'OK', 'ERR'] as const).map((s) => (
-                  <TouchableOpacity
-                    key={s}
-                    style={[styles.filterPill, filterStatus === s && styles.filterPillActive]}
-                    onPress={() => setFilterStatus(s)}
-                  >
-                    <Text style={[styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]}>
-                      {s === 'ALL' ? t.allFilter : s === 'OK' ? t.success2xx3xx : t.error4xx5xx}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {(['ALL', 'OK', 'ERR'] as const).map((s) => {
+                  const pillLabel = s === 'ALL' ? t.allFilter : s === 'OK' ? t.success2xx3xx : t.error4xx5xx;
+                  return (
+                    <TouchableOpacity
+                      key={s}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: filterStatus === s }}
+                      accessibilityLabel={pillLabel}
+                      style={[styles.filterPill, filterStatus === s && styles.filterPillActive]}
+                      onPress={() => setFilterStatus(s)}
+                    >
+                      <Text style={[styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]}>
+                        {pillLabel}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             ) : null}
           </View>
@@ -713,6 +739,8 @@ export const DebugMonitor = ({
         {showScrollTop && (
           <TouchableOpacity
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Scroll to top"
             onPress={scrollToTop}
             style={[
               styles.scrollTopBtn,
@@ -739,6 +767,8 @@ export const DebugMonitor = ({
                   <View style={styles.detailHandle} />
                   <View style={styles.detailHeader}>
                     <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Back"
                       style={styles.detailBack}
                       onPress={() => {
                         setSelectedLog(null);
@@ -761,14 +791,20 @@ export const DebugMonitor = ({
                             : (t.logs || '').toUpperCase()
                           : `${selectedLog?.durationMs ?? 0}${t.ms}, ${selectedLog?.size || `0.00${t.kb}`}`}
                     </Text>
-                    <TouchableOpacity style={styles.detailMenu} onPress={() => setShowMenu(!showMenu)}>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Menu"
+                      style={styles.detailMenu}
+                      onPress={() => setShowMenu(!showMenu)}
+                    >
                       <Text style={styles.detailMenuText}>⋮</Text>
                     </TouchableOpacity>
                   </View>
 
                   {showMenu ? (
-                    <View style={styles.detailDropdown}>
+                    <View style={styles.detailDropdown} accessibilityRole="menu">
                       <TouchableOpacity
+                        accessibilityRole="menuitem"
                         style={styles.detailDropdownItem}
                         onPress={() => {
                           handleShareLog(selectedLog!);
@@ -778,6 +814,7 @@ export const DebugMonitor = ({
                         <Text style={styles.detailDropdownText}>{t.shareEntry}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
+                        accessibilityRole="menuitem"
                         style={styles.detailDropdownItem}
                         onPress={() => {
                           if (selectedLog) {
@@ -795,6 +832,7 @@ export const DebugMonitor = ({
                       {customActions?.map((action, i) => (
                         <TouchableOpacity
                           key={`ca-${i}`}
+                          accessibilityRole="menuitem"
                           style={styles.detailDropdownItem}
                           onPress={() => {
                             if (selectedLog) action.onPress(selectedLog);
@@ -805,6 +843,7 @@ export const DebugMonitor = ({
                         </TouchableOpacity>
                       ))}
                       <TouchableOpacity
+                        accessibilityRole="menuitem"
                         style={[styles.detailDropdownItem, { borderBottomWidth: 0 }]}
                         onPress={() => setShowMenu(false)}
                       >
@@ -817,8 +856,10 @@ export const DebugMonitor = ({
                    selectedLog?.type !== 'websocket' &&
                    selectedLog?.type !== 'performance' &&
                    selectedLog?.type !== 'action' ? (
-                    <View style={styles.detailTabs}>
+                    <View style={styles.detailTabs} accessibilityRole="tablist">
                       <TouchableOpacity
+                        accessibilityRole="tab"
+                        accessibilityState={{ selected: detailTab === 'REQUEST' }}
                         style={[
                           styles.detailTab,
                           detailTab === 'REQUEST' && styles.detailTabActive
@@ -835,6 +876,8 @@ export const DebugMonitor = ({
                           </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
+                          accessibilityRole="tab"
+                          accessibilityState={{ selected: detailTab === 'RESPONSE' }}
                           style={[
                             styles.detailTab,
                             detailTab === 'RESPONSE' && styles.detailTabActive

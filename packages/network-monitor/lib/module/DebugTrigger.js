@@ -592,11 +592,15 @@ export const DebugTrigger = ({
   }), /*#__PURE__*/React.createElement(View, {
     style: styles.actions
   }, /*#__PURE__*/React.createElement(TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.cancel,
     style: styles.cancelBtn,
     onPress: () => setShowPasswordModal(false)
   }, /*#__PURE__*/React.createElement(Text, {
     style: styles.cancelText
   }, t.cancel)), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.confirm,
     style: styles.submitBtn,
     onPress: handlePasswordSubmit
   }, /*#__PURE__*/React.createElement(Text, {
@@ -623,6 +627,8 @@ export const DebugTrigger = ({
     }
   }, panResponder.panHandlers), /*#__PURE__*/React.createElement(TouchableOpacity, {
     activeOpacity: 0.85,
+    accessibilityRole: "button",
+    accessibilityLabel: "Open debugger",
     style: [styles.floatingButton, {
       opacity: btnHidden ? 0.35 : 1
     }],

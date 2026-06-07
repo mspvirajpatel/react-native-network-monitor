@@ -228,6 +228,11 @@ const SettingsPanel = ({
       key: index,
       style: [styles.urlOption, isActive && styles.urlOptionActive]
     }, /*#__PURE__*/React.createElement(TouchableOpacity, {
+      accessibilityRole: "radio",
+      accessibilityState: {
+        selected: isActive
+      },
+      accessibilityLabel: `${item.title}${item.url ? `, ${item.url}` : ''}`,
       style: styles.urlOptionInfo,
       onPress: () => {
         if (item.type === 'env') {
@@ -248,6 +253,8 @@ const SettingsPanel = ({
     }, item.url) : null), /*#__PURE__*/React.createElement(View, {
       style: styles.optionActions
     }, isCustom ? /*#__PURE__*/React.createElement(TouchableOpacity, {
+      accessibilityRole: "button",
+      accessibilityLabel: `Remove ${item.title}`,
       style: styles.deleteBtn,
       onPress: () => handleRemoveCustomUrl(item.val)
     }, /*#__PURE__*/React.createElement(Text, {
@@ -280,6 +287,8 @@ const SettingsPanel = ({
     keyboardType: "url",
     onChangeText: onSetManualUrl
   }), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.applyChanges,
     style: styles.saveBtn,
     onPress: handleSaveSettings
   }, /*#__PURE__*/React.createElement(Text, {
@@ -305,6 +314,11 @@ const SettingsPanel = ({
     const active = selectedTheme === mode;
     return /*#__PURE__*/React.createElement(TouchableOpacity, {
       key: mode,
+      accessibilityRole: "radio",
+      accessibilityState: {
+        checked: active
+      },
+      accessibilityLabel: `${mode} theme`,
       activeOpacity: 0.7,
       onPress: () => onSetSelectedTheme(mode),
       style: [styles.optionChip, {
@@ -349,6 +363,8 @@ const SettingsPanel = ({
   }, /*#__PURE__*/React.createElement(View, {
     style: styles.cardInner
   }, /*#__PURE__*/React.createElement(TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.shareJsonReport,
     style: [styles.toolBtn, {
       margin: 0,
       marginBottom: 12
@@ -357,6 +373,8 @@ const SettingsPanel = ({
   }, /*#__PURE__*/React.createElement(Text, {
     style: styles.toolBtnText
   }, t.shareJsonReport)), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.shareTextReport,
     style: [styles.toolBtn, {
       margin: 0,
       marginBottom: 16
@@ -365,6 +383,8 @@ const SettingsPanel = ({
   }, /*#__PURE__*/React.createElement(Text, {
     style: styles.toolBtnText
   }, t.shareTextReport)), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.saveJsonReportToFile,
     style: [styles.toolBtn, {
       margin: 0,
       marginBottom: 12,
@@ -376,6 +396,8 @@ const SettingsPanel = ({
       color: C.accent
     }]
   }, t.saveJsonReportToFile)), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.saveTextReportToFile,
     style: [styles.toolBtn, {
       margin: 0,
       marginBottom: 16,
@@ -387,6 +409,8 @@ const SettingsPanel = ({
       color: C.accent
     }]
   }, t.saveTextReportToFile)), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.wipeAllRecords,
     style: [styles.toolBtn, {
       margin: 0,
       borderColor: C.error + '40'

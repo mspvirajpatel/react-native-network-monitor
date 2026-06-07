@@ -51,7 +51,9 @@ const WebSocketPanel = ({
     return /*#__PURE__*/React.createElement(LogItemAnimated, {
       key: log.id
     }, /*#__PURE__*/React.createElement(View, {
-      style: styles.wsItem
+      style: styles.wsItem,
+      accessibilityRole: "summary",
+      accessibilityLabel: `WebSocket ${isOpen ? 'open' : isClose ? 'close' : isError ? 'error' : 'message'}: ${log.url || ''}`
     }, /*#__PURE__*/React.createElement(View, {
       style: styles.wsHeader
     }, /*#__PURE__*/React.createElement(View, {

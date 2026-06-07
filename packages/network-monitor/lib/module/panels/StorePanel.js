@@ -55,6 +55,8 @@ const StorePanel = ({
       const changedKeys = hasDiff ? Object.keys(sd.diff).join(', ') : null;
       return /*#__PURE__*/React.createElement(LogItemAnimated, null, /*#__PURE__*/React.createElement(TouchableOpacity, {
         activeOpacity: 0.7,
+        accessibilityRole: "button",
+        accessibilityLabel: `Store action: ${sd?.actionType || 'state change'} from ${sd?.storeName || 'Store'}`,
         style: styles.logItem,
         onPress: () => onSelectLog(item)
       }, /*#__PURE__*/React.createElement(View, {

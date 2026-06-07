@@ -600,12 +600,16 @@ export const DebugTrigger = ({
                     />
                     <View style={styles.actions}>
                       <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={t.cancel}
                         style={styles.cancelBtn}
                         onPress={() => setShowPasswordModal(false)}
                       >
                         <Text style={styles.cancelText}>{t.cancel}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={t.confirm}
                         style={styles.submitBtn}
                         onPress={handlePasswordSubmit}
                       >
@@ -644,6 +648,8 @@ export const DebugTrigger = ({
         >
           <TouchableOpacity
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Open debugger"
             style={[styles.floatingButton, { opacity: btnHidden ? 0.35 : 1 }]}
             testID="network-monitor-debug-button"
             onPress={handleOpen}

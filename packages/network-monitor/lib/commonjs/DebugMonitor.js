@@ -392,6 +392,8 @@ const DebugMonitor = ({
     const statusColor = getStatusColor(item.status);
     const row = /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
       activeOpacity: 0.7,
+      accessibilityRole: "button",
+      accessibilityLabel: `${item.method || item.type || 'log'}: ${item.url || item.message || ''}`,
       style: styles.logItem,
       onPress: () => {
         setSelectedLog(item);
@@ -484,6 +486,8 @@ const DebugMonitor = ({
   }, logs.length))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.headerActions
   }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityLabel: t.wipeAllRecords || 'Clear logs',
+    accessibilityRole: "button",
     style: [styles.headerBtn, {
       backgroundColor: C.errorDim
     }],
@@ -495,6 +499,8 @@ const DebugMonitor = ({
       fontWeight: '800'
     }]
   }, "\u2715")), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityLabel: "Close",
+    accessibilityRole: "button",
     style: styles.headerBtn,
     onPress: onClose
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
@@ -507,39 +513,58 @@ const DebugMonitor = ({
     horizontal: true,
     showsHorizontalScrollIndicator: false,
     contentContainerStyle: styles.tabScroll
-  }, availableTabs.map(tab => /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
-    key: tab,
-    style: styles.tabItem,
-    onPress: () => setActiveTab(tab)
-  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-    style: [styles.tabText, activeTab === tab ? styles.tabTextActive : styles.tabTextInactive]
-  }, tab === 'ALL' ? t.all : tab === 'NETWORK' ? t.network : tab === 'LOGS' ? t.logs : tab === 'WEBSOCKET' ? t.ws : tab === 'PERFORMANCE' ? t.fps : tab === 'STORE' ? t.store : t.settings, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-    style: styles.tabBadge
-  }, tab !== 'SETTINGS' ? ` ${tabCounts[tab]}` : '')), activeTab === tab ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-    style: styles.tabActiveLine
-  }) : null)))), activeTab !== 'SETTINGS' ? /*#__PURE__*/_react.default.createElement(_reactNative.View, null, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+  }, availableTabs.map(tab => {
+    const tabLabel = tab === 'ALL' ? t.all : tab === 'NETWORK' ? t.network : tab === 'LOGS' ? t.logs : tab === 'WEBSOCKET' ? t.ws : tab === 'PERFORMANCE' ? t.fps : tab === 'STORE' ? t.store : t.settings;
+    return /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      key: tab,
+      accessibilityRole: "tab",
+      accessibilityState: {
+        selected: activeTab === tab
+      },
+      accessibilityLabel: `${tabLabel}${tab !== 'SETTINGS' ? `, ${tabCounts[tab]} items` : ''}`,
+      style: styles.tabItem,
+      onPress: () => setActiveTab(tab)
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.tabText, activeTab === tab ? styles.tabTextActive : styles.tabTextInactive]
+    }, tabLabel, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.tabBadge
+    }, tab !== 'SETTINGS' ? ` ${tabCounts[tab]}` : '')), activeTab === tab ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.tabActiveLine
+    }) : null);
+  }))), activeTab !== 'SETTINGS' ? /*#__PURE__*/_react.default.createElement(_reactNative.View, null, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.searchRow
   }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.searchBox
   }, /*#__PURE__*/_react.default.createElement(_reactNative.TextInput, {
+    accessibilityLabel: searchPlaceholder || t.search,
     style: styles.searchInput,
     placeholder: searchPlaceholder || t.search,
     placeholderTextColor: C.textDim,
     value: searchQuery,
     onChangeText: setSearchQuery
   }), searchQuery.length > 0 ? /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: "Clear search",
     onPress: () => setSearchQuery('')
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
     style: styles.clearSearch
   }, "\u2715")) : null)), activeTab === 'NETWORK' ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.filterRow
-  }, ['ALL', 'OK', 'ERR'].map(s => /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
-    key: s,
-    style: [styles.filterPill, filterStatus === s && styles.filterPillActive],
-    onPress: () => setFilterStatus(s)
-  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
-    style: [styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]
-  }, s === 'ALL' ? t.allFilter : s === 'OK' ? t.success2xx3xx : t.error4xx5xx)))) : null) : null, activeTab === 'SETTINGS' ? /*#__PURE__*/_react.default.createElement(_SettingsPanel.default, {
+  }, ['ALL', 'OK', 'ERR'].map(s => {
+    const pillLabel = s === 'ALL' ? t.allFilter : s === 'OK' ? t.success2xx3xx : t.error4xx5xx;
+    return /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      key: s,
+      accessibilityRole: "radio",
+      accessibilityState: {
+        checked: filterStatus === s
+      },
+      accessibilityLabel: pillLabel,
+      style: [styles.filterPill, filterStatus === s && styles.filterPillActive],
+      onPress: () => setFilterStatus(s)
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]
+    }, pillLabel));
+  })) : null) : null, activeTab === 'SETTINGS' ? /*#__PURE__*/_react.default.createElement(_SettingsPanel.default, {
     baseUrls: baseUrls,
     prodUrl: prodUrl,
     testUrl: testUrl,
@@ -604,6 +629,8 @@ const DebugMonitor = ({
     }, t.emptySubtitle))
   }), showScrollTop && /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
     activeOpacity: 0.8,
+    accessibilityRole: "button",
+    accessibilityLabel: "Scroll to top",
     onPress: scrollToTop,
     style: [styles.scrollTopBtn, {
       backgroundColor: C.primary,
@@ -634,6 +661,8 @@ const DebugMonitor = ({
     }), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: styles.detailHeader
     }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      accessibilityRole: "button",
+      accessibilityLabel: "Back",
       style: styles.detailBack,
       onPress: () => {
         setSelectedLog(null);
@@ -646,13 +675,17 @@ const DebugMonitor = ({
         color: C.error
       }]
     }, selectedLog?.type === 'action' ? `[${selectedLog?.stateData?.storeName || t.store}] ${selectedLog?.stateData?.actionType || t.action}` : selectedLog?.type === 'info' ? isSelectedConsoleError ? t.consoleError : (t.logs || '').toUpperCase() : `${selectedLog?.durationMs ?? 0}${t.ms}, ${selectedLog?.size || `0.00${t.kb}`}`), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      accessibilityRole: "button",
+      accessibilityLabel: "Menu",
       style: styles.detailMenu,
       onPress: () => setShowMenu(!showMenu)
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.detailMenuText
     }, "\u22EE"))), showMenu ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.detailDropdown
+      style: styles.detailDropdown,
+      accessibilityRole: "menu"
     }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      accessibilityRole: "menuitem",
       style: styles.detailDropdownItem,
       onPress: () => {
         handleShareLog(selectedLog);
@@ -661,6 +694,7 @@ const DebugMonitor = ({
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.detailDropdownText
     }, t.shareEntry)), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      accessibilityRole: "menuitem",
       style: styles.detailDropdownItem,
       onPress: () => {
         if (selectedLog) {
@@ -676,6 +710,7 @@ const DebugMonitor = ({
       style: styles.detailDropdownText
     }, t.shareCurl)), customActions?.map((action, i) => /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
       key: `ca-${i}`,
+      accessibilityRole: "menuitem",
       style: styles.detailDropdownItem,
       onPress: () => {
         if (selectedLog) action.onPress(selectedLog);
@@ -684,6 +719,7 @@ const DebugMonitor = ({
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.detailDropdownText
     }, action.label))), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      accessibilityRole: "menuitem",
       style: [styles.detailDropdownItem, {
         borderBottomWidth: 0
       }],
@@ -691,13 +727,22 @@ const DebugMonitor = ({
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.detailDropdownText
     }, t.closeMenu))) : null, selectedLog?.type !== 'info' && selectedLog?.type !== 'websocket' && selectedLog?.type !== 'performance' && selectedLog?.type !== 'action' ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.detailTabs
+      style: styles.detailTabs,
+      accessibilityRole: "tablist"
     }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      accessibilityRole: "tab",
+      accessibilityState: {
+        selected: detailTab === 'REQUEST'
+      },
       style: [styles.detailTab, detailTab === 'REQUEST' && styles.detailTabActive],
       onPress: () => setDetailTab('REQUEST')
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: [styles.detailTabText, detailTab === 'REQUEST' ? styles.detailTabTextActive : styles.detailTabTextInactive]
     }, (t.request || '').toUpperCase())), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      accessibilityRole: "tab",
+      accessibilityState: {
+        selected: detailTab === 'RESPONSE'
+      },
       style: [styles.detailTab, detailTab === 'RESPONSE' && styles.detailTabActive],
       onPress: () => setDetailTab('RESPONSE')
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {

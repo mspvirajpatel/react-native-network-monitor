@@ -237,6 +237,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               return (
                 <View key={index} style={[styles.urlOption, isActive && styles.urlOptionActive]}>
                   <TouchableOpacity
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`${item.title}${item.url ? `, ${item.url}` : ''}`}
                     style={styles.urlOptionInfo}
                     onPress={() => {
                       if (item.type === 'env') {
@@ -264,6 +267,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   <View style={styles.optionActions}>
                     {isCustom ? (
                       <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove ${item.title}`}
                         style={styles.deleteBtn}
                         onPress={() => handleRemoveCustomUrl(item.val)}
                       >
@@ -296,7 +301,12 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               keyboardType="url"
               onChangeText={onSetManualUrl}
             />
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveSettings}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t.applyChanges}
+              style={styles.saveBtn}
+              onPress={handleSaveSettings}
+            >
               <Text style={styles.saveBtnText}>{t.applyChanges}</Text>
             </TouchableOpacity>
           </View>
@@ -315,6 +325,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               return (
                 <TouchableOpacity
                   key={mode}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: active }}
+                  accessibilityLabel={`${mode} theme`}
                   activeOpacity={0.7}
                   onPress={() => onSetSelectedTheme(mode)}
                   style={[
@@ -359,21 +372,43 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </View>
         <View style={styles.settingsCard}>
           <View style={styles.cardInner}>
-            <TouchableOpacity style={[styles.toolBtn, { margin: 0, marginBottom: 12 }]} onPress={handleExportJson}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t.shareJsonReport}
+              style={[styles.toolBtn, { margin: 0, marginBottom: 12 }]}
+              onPress={handleExportJson}
+            >
               <Text style={styles.toolBtnText}>{t.shareJsonReport}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.toolBtn, { margin: 0, marginBottom: 16 }]} onPress={handleExportText}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t.shareTextReport}
+              style={[styles.toolBtn, { margin: 0, marginBottom: 16 }]}
+              onPress={handleExportText}
+            >
               <Text style={styles.toolBtnText}>{t.shareTextReport}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.toolBtn, { margin: 0, marginBottom: 12, borderColor: C.accent + '40' }]} onPress={() => saveReportToJson(logs)}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t.saveJsonReportToFile}
+              style={[styles.toolBtn, { margin: 0, marginBottom: 12, borderColor: C.accent + '40' }]}
+              onPress={() => saveReportToJson(logs)}
+            >
               <Text style={[styles.toolBtnText, { color: C.accent }]}>{t.saveJsonReportToFile}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.toolBtn, { margin: 0, marginBottom: 16, borderColor: C.accent + '40' }]} onPress={() => saveReportToText(logs)}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t.saveTextReportToFile}
+              style={[styles.toolBtn, { margin: 0, marginBottom: 16, borderColor: C.accent + '40' }]}
+              onPress={() => saveReportToText(logs)}
+            >
               <Text style={[styles.toolBtnText, { color: C.accent }]}>{t.saveTextReportToFile}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t.wipeAllRecords}
               style={[styles.toolBtn, { margin: 0, borderColor: C.error + '40' }]}
               onPress={handleClearLogs}
             >

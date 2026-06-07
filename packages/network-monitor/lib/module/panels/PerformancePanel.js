@@ -26,6 +26,11 @@ const PerformancePanel = ({
   }, /*#__PURE__*/React.createElement(Text, {
     style: styles.perfToggleText
   }, perfRunning ? t.fpsMonitorActive : t.fpsMonitorOff), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    accessibilityRole: "switch",
+    accessibilityState: {
+      checked: perfRunning
+    },
+    accessibilityLabel: "Toggle FPS monitor",
     style: [styles.toggleTrack, perfRunning ? styles.toggleTrackActive : styles.toggleTrackInactive],
     onPress: () => {
       if (perfRunning) {

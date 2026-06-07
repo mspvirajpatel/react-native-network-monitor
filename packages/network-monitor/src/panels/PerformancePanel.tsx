@@ -38,6 +38,9 @@ const PerformancePanel: React.FC<PerformancePanelProps> = ({
           {perfRunning ? t.fpsMonitorActive : t.fpsMonitorOff}
         </Text>
         <TouchableOpacity
+          accessibilityRole="switch"
+          accessibilityState={{ checked: perfRunning }}
+          accessibilityLabel="Toggle FPS monitor"
           style={[
             styles.toggleTrack,
             perfRunning ? styles.toggleTrackActive : styles.toggleTrackInactive

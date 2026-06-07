@@ -55,6 +55,8 @@ const StorePanel: React.FC<StorePanelProps> = ({
             <LogItemAnimated>
               <TouchableOpacity
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Store action: ${sd?.actionType || 'state change'} from ${sd?.storeName || 'Store'}`}
                 style={styles.logItem}
                 onPress={() => onSelectLog(item)}
               >

@@ -45,7 +45,11 @@ const WebSocketPanel: React.FC<WebSocketPanelProps> = ({ logs, C, t }) => {
 
         return (
           <LogItemAnimated key={log.id}>
-            <View style={styles.wsItem}>
+            <View
+              style={styles.wsItem}
+              accessibilityRole="summary"
+              accessibilityLabel={`WebSocket ${isOpen ? 'open' : isClose ? 'close' : isError ? 'error' : 'message'}: ${log.url || ''}`}
+            >
               <View style={styles.wsHeader}>
                 <View style={[styles.wsBadge, { backgroundColor: badgeColor + '20' }]}>
                   <Text style={[styles.wsBadgeText, { color: badgeColor }]}>

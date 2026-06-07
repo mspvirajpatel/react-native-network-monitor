@@ -597,11 +597,15 @@ const DebugTrigger = ({
   }), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.actions
   }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.cancel,
     style: styles.cancelBtn,
     onPress: () => setShowPasswordModal(false)
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
     style: styles.cancelText
   }, t.cancel)), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.confirm,
     style: styles.submitBtn,
     onPress: handlePasswordSubmit
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
@@ -628,6 +632,8 @@ const DebugTrigger = ({
     }
   }, panResponder.panHandlers), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
     activeOpacity: 0.85,
+    accessibilityRole: "button",
+    accessibilityLabel: "Open debugger",
     style: [styles.floatingButton, {
       opacity: btnHidden ? 0.35 : 1
     }],
