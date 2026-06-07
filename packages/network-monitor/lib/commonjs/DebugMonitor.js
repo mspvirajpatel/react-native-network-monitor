@@ -444,6 +444,34 @@ const DebugMonitor = ({
     setBaseUrl(_Logger.Logger.getBaseUrl());
   };
 
+  /** Animated wrapper that fades + slides in on mount for new log entries */
+  const LogItemAnimated = ({
+    children,
+    index
+  }) => {
+    const opacity = (0, _react.useRef)(new _reactNative.Animated.Value(0)).current;
+    const translateY = (0, _react.useRef)(new _reactNative.Animated.Value(12)).current;
+    (0, _react.useEffect)(() => {
+      _reactNative.Animated.parallel([_reactNative.Animated.timing(opacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true
+      }), _reactNative.Animated.timing(translateY, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true
+      })]).start();
+    }, [opacity, translateY]);
+    return /*#__PURE__*/_react.default.createElement(_reactNative.Animated.View, {
+      style: {
+        opacity,
+        transform: [{
+          translateY
+        }]
+      }
+    }, children);
+  };
+
   /**
    * renderLogItem
    *
@@ -453,13 +481,14 @@ const DebugMonitor = ({
    * @returns JSX.Element
    */
   const renderLogItem = ({
-    item
+    item,
+    index
   }) => {
     const isConsoleError = item.type === 'info' && item.message?.startsWith('[ERROR]');
     const typeColor = getTypeColor(item);
     const methodColor = getMethodColor(item.method);
     const statusColor = getStatusColor(item.status);
-    return /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    const row = /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
       activeOpacity: 0.7,
       style: styles.logItem,
       onPress: () => {
@@ -511,6 +540,9 @@ const DebugMonitor = ({
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.logMeta
     }, "\uD83D\uDCE6 ", item.size || `0.00${t.kb}`))) : null));
+    return /*#__PURE__*/_react.default.createElement(LogItemAnimated, {
+      index: index
+    }, row);
   };
 
   /**
@@ -797,7 +829,7 @@ const DebugMonitor = ({
         const sd = item.stateData;
         const hasDiff = sd?.diff && Object.keys(sd.diff).length > 0;
         const changedKeys = hasDiff ? Object.keys(sd.diff).join(', ') : null;
-        return /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+        return /*#__PURE__*/_react.default.createElement(LogItemAnimated, null, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
           activeOpacity: 0.7,
           style: styles.logItem,
           onPress: () => {
@@ -842,7 +874,7 @@ const DebugMonitor = ({
           style: styles.metaBadge
         }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
           style: styles.logMeta
-        }, t.snapshot))) : null));
+        }, t.snapshot))) : null)));
       },
       keyExtractor: item => item.id,
       getItemLayout: (_data, index) => ({
@@ -1014,8 +1046,9 @@ const DebugMonitor = ({
       const isClose = log.message?.includes('CLOSE');
       const isError = log.message?.includes('ERROR');
       const badgeColor = isOpen ? C.success : isClose ? C.textDim : isError ? C.error : C.secondary;
-      return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-        key: log.id,
+      return /*#__PURE__*/_react.default.createElement(LogItemAnimated, {
+        key: log.id
+      }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
         style: styles.wsItem
       }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
         style: styles.wsHeader
@@ -1048,7 +1081,7 @@ const DebugMonitor = ({
       }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
         style: styles.jsonText,
         numberOfLines: 5
-      }, typeof log.requestData === 'string' ? log.requestData : JSON.stringify(log.requestData, null, 2))));
+      }, typeof log.requestData === 'string' ? log.requestData : JSON.stringify(log.requestData, null, 2)))));
     }), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: {
         height: 40

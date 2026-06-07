@@ -2,7 +2,7 @@
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Share, Modal, Alert, TextInput, StatusBar, FlatList, useColorScheme } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Share, Modal, Alert, TextInput, StatusBar, FlatList, Animated, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styleSheet, { getColors } from './DebugMonitorStyles';
 import { Logger } from './Logger';
@@ -436,6 +436,34 @@ export const DebugMonitor = ({
     setBaseUrl(Logger.getBaseUrl());
   };
 
+  /** Animated wrapper that fades + slides in on mount for new log entries */
+  const LogItemAnimated = ({
+    children,
+    index
+  }) => {
+    const opacity = useRef(new Animated.Value(0)).current;
+    const translateY = useRef(new Animated.Value(12)).current;
+    useEffect(() => {
+      Animated.parallel([Animated.timing(opacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true
+      }), Animated.timing(translateY, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true
+      })]).start();
+    }, [opacity, translateY]);
+    return /*#__PURE__*/React.createElement(Animated.View, {
+      style: {
+        opacity,
+        transform: [{
+          translateY
+        }]
+      }
+    }, children);
+  };
+
   /**
    * renderLogItem
    *
@@ -445,13 +473,14 @@ export const DebugMonitor = ({
    * @returns JSX.Element
    */
   const renderLogItem = ({
-    item
+    item,
+    index
   }) => {
     const isConsoleError = item.type === 'info' && item.message?.startsWith('[ERROR]');
     const typeColor = getTypeColor(item);
     const methodColor = getMethodColor(item.method);
     const statusColor = getStatusColor(item.status);
-    return /*#__PURE__*/React.createElement(TouchableOpacity, {
+    const row = /*#__PURE__*/React.createElement(TouchableOpacity, {
       activeOpacity: 0.7,
       style: styles.logItem,
       onPress: () => {
@@ -503,6 +532,9 @@ export const DebugMonitor = ({
     }, /*#__PURE__*/React.createElement(Text, {
       style: styles.logMeta
     }, "\uD83D\uDCE6 ", item.size || `0.00${t.kb}`))) : null));
+    return /*#__PURE__*/React.createElement(LogItemAnimated, {
+      index: index
+    }, row);
   };
 
   /**
@@ -789,7 +821,7 @@ export const DebugMonitor = ({
         const sd = item.stateData;
         const hasDiff = sd?.diff && Object.keys(sd.diff).length > 0;
         const changedKeys = hasDiff ? Object.keys(sd.diff).join(', ') : null;
-        return /*#__PURE__*/React.createElement(TouchableOpacity, {
+        return /*#__PURE__*/React.createElement(LogItemAnimated, null, /*#__PURE__*/React.createElement(TouchableOpacity, {
           activeOpacity: 0.7,
           style: styles.logItem,
           onPress: () => {
@@ -834,7 +866,7 @@ export const DebugMonitor = ({
           style: styles.metaBadge
         }, /*#__PURE__*/React.createElement(Text, {
           style: styles.logMeta
-        }, t.snapshot))) : null));
+        }, t.snapshot))) : null)));
       },
       keyExtractor: item => item.id,
       getItemLayout: (_data, index) => ({
@@ -1006,8 +1038,9 @@ export const DebugMonitor = ({
       const isClose = log.message?.includes('CLOSE');
       const isError = log.message?.includes('ERROR');
       const badgeColor = isOpen ? C.success : isClose ? C.textDim : isError ? C.error : C.secondary;
-      return /*#__PURE__*/React.createElement(View, {
-        key: log.id,
+      return /*#__PURE__*/React.createElement(LogItemAnimated, {
+        key: log.id
+      }, /*#__PURE__*/React.createElement(View, {
         style: styles.wsItem
       }, /*#__PURE__*/React.createElement(View, {
         style: styles.wsHeader
@@ -1040,7 +1073,7 @@ export const DebugMonitor = ({
       }, /*#__PURE__*/React.createElement(Text, {
         style: styles.jsonText,
         numberOfLines: 5
-      }, typeof log.requestData === 'string' ? log.requestData : JSON.stringify(log.requestData, null, 2))));
+      }, typeof log.requestData === 'string' ? log.requestData : JSON.stringify(log.requestData, null, 2)))));
     }), /*#__PURE__*/React.createElement(View, {
       style: {
         height: 40

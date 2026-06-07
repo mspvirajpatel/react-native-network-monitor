@@ -15,7 +15,8 @@ import {
   FlatList,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  useColorScheme
+  Animated,
+  useColorScheme,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styleSheet, { getColors, DARK_COLORS, type ThemeColors } from './DebugMonitorStyles';
@@ -545,6 +546,39 @@ export const DebugMonitor = ({
     setBaseUrl(Logger.getBaseUrl());
   };
 
+  /** Animated wrapper that fades + slides in on mount for new log entries */
+  const LogItemAnimated = ({
+    children,
+    index,
+  }: {
+    children: React.ReactNode;
+    index?: number;
+  }): React.ReactElement => {
+    const opacity = useRef(new Animated.Value(0)).current;
+    const translateY = useRef(new Animated.Value(12)).current;
+
+    useEffect(() => {
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, [opacity, translateY]);
+
+    return (
+      <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+        {children}
+      </Animated.View>
+    );
+  };
+
   /**
    * renderLogItem
    *
@@ -553,13 +587,13 @@ export const DebugMonitor = ({
    * @param param0 - Destructured FlatList item wrapper
    * @returns JSX.Element
    */
-  const renderLogItem = ({ item }: { item: LogEntry }): React.ReactElement => {
+  const renderLogItem = ({ item, index }: { item: LogEntry; index?: number }): React.ReactElement => {
     const isConsoleError = item.type === 'info' && item.message?.startsWith('[ERROR]');
     const typeColor = getTypeColor(item);
     const methodColor = getMethodColor(item.method);
     const statusColor = getStatusColor(item.status);
 
-    return (
+    const row = (
       <TouchableOpacity
         activeOpacity={0.7}
         style={styles.logItem}
@@ -606,6 +640,8 @@ export const DebugMonitor = ({
         </View>
       </TouchableOpacity>
     );
+
+    return <LogItemAnimated index={index}>{row}</LogItemAnimated>;
   };
 
 
@@ -838,44 +874,46 @@ export const DebugMonitor = ({
           const hasDiff = sd?.diff && Object.keys(sd.diff).length > 0;
           const changedKeys = hasDiff ? Object.keys(sd!.diff!).join(', ') : null;
           return (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.logItem}
-              onPress={() => {
-                setSelectedLog(item);
-                setDetailTab('RESPONSE');
-              }}
-            >
-              <View style={[styles.logIndicator, { backgroundColor: C.secondary }]} />
-              <View style={styles.logBody}>
-                <View style={styles.logRow}>
-                  <View style={[styles.logChip, { backgroundColor: C.secondary + '18' }]}>
-                    <Text style={[styles.logChipText, { color: C.secondary }]}>
-                      {sd?.actionType ? sd.actionType : t.action}
+            <LogItemAnimated>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.logItem}
+                onPress={() => {
+                  setSelectedLog(item);
+                  setDetailTab('RESPONSE');
+                }}
+              >
+                <View style={[styles.logIndicator, { backgroundColor: C.secondary }]} />
+                <View style={styles.logBody}>
+                  <View style={styles.logRow}>
+                    <View style={[styles.logChip, { backgroundColor: C.secondary + '18' }]}>
+                      <Text style={[styles.logChipText, { color: C.secondary }]}>
+                        {sd?.actionType ? sd.actionType : t.action}
+                      </Text>
+                    </View>
+                    <Text style={styles.logTime}>
+                      {new Date(item.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </Text>
                   </View>
-                  <Text style={styles.logTime}>
-                    {new Date(item.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  <Text style={styles.logUrl} numberOfLines={2}>
+                    [{sd?.storeName || 'Store'}] {sd?.actionType || t.state}
                   </Text>
+                  {changedKeys ? (
+                    <View style={styles.logMetaBox}>
+                      <View style={styles.metaBadge}>
+                        <Text style={styles.logMeta}>{t.changedKeys}: {changedKeys}</Text>
+                      </View>
+                    </View>
+                  ) : sd?.snapshot ? (
+                    <View style={styles.logMetaBox}>
+                      <View style={styles.metaBadge}>
+                        <Text style={styles.logMeta}>{t.snapshot}</Text>
+                      </View>
+                    </View>
+                  ) : null}
                 </View>
-                <Text style={styles.logUrl} numberOfLines={2}>
-                  [{sd?.storeName || 'Store'}] {sd?.actionType || t.state}
-                </Text>
-                {changedKeys ? (
-                  <View style={styles.logMetaBox}>
-                    <View style={styles.metaBadge}>
-                      <Text style={styles.logMeta}>{t.changedKeys}: {changedKeys}</Text>
-                    </View>
-                  </View>
-                ) : sd?.snapshot ? (
-                  <View style={styles.logMetaBox}>
-                    <View style={styles.metaBadge}>
-                      <Text style={styles.logMeta}>{t.snapshot}</Text>
-                    </View>
-                  </View>
-                ) : null}
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </LogItemAnimated>
           );
         }}
         keyExtractor={(item: LogEntry) => item.id}
@@ -1026,29 +1064,31 @@ export const DebugMonitor = ({
           const badgeColor = isOpen ? C.success : isClose ? C.textDim : isError ? C.error : C.secondary;
 
           return (
-            <View key={log.id} style={styles.wsItem}>
-              <View style={styles.wsHeader}>
-                <View style={[styles.wsBadge, { backgroundColor: badgeColor + '20' }]}>
-                  <Text style={[styles.wsBadgeText, { color: badgeColor }]}>
-                    {isOpen ? t.wsOpen : isClose ? t.wsClose : isError ? t.wsError : t.wsMsg}
+            <LogItemAnimated key={log.id}>
+              <View style={styles.wsItem}>
+                <View style={styles.wsHeader}>
+                  <View style={[styles.wsBadge, { backgroundColor: badgeColor + '20' }]}>
+                    <Text style={[styles.wsBadgeText, { color: badgeColor }]}>
+                      {isOpen ? t.wsOpen : isClose ? t.wsClose : isError ? t.wsError : t.wsMsg}
+                    </Text>
+                  </View>
+                  <Text style={styles.wsUrl} numberOfLines={1}>{log.url}</Text>
+                  <Text style={styles.wsTime}>
+                    {new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </Text>
                 </View>
-                <Text style={styles.wsUrl} numberOfLines={1}>{log.url}</Text>
-                <Text style={styles.wsTime}>
-                  {new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </Text>
+                {log.message && (
+                  <Text style={styles.wsMessage} numberOfLines={3}>{log.message}</Text>
+                )}
+                {log.requestData && (
+                  <View style={[styles.jsonBox, { marginTop: 8, padding: 10 }]}>
+                    <Text style={styles.jsonText} numberOfLines={5}>
+                      {typeof log.requestData === 'string' ? log.requestData : JSON.stringify(log.requestData, null, 2)}
+                    </Text>
+                  </View>
+                )}
               </View>
-              {log.message && (
-                <Text style={styles.wsMessage} numberOfLines={3}>{log.message}</Text>
-              )}
-              {log.requestData && (
-                <View style={[styles.jsonBox, { marginTop: 8, padding: 10 }]}>
-                  <Text style={styles.jsonText} numberOfLines={5}>
-                    {typeof log.requestData === 'string' ? log.requestData : JSON.stringify(log.requestData, null, 2)}
-                  </Text>
-                </View>
-              )}
-            </View>
+            </LogItemAnimated>
           );
         })}
         <View style={{ height: 40 }} />
