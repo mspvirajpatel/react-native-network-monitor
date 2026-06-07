@@ -4,7 +4,7 @@ export { setupConsoleMonitor } from './ConsoleMonitor';
 export { setupWebSocketMonitor } from './WebSocketMonitor';
 
 // Performance Monitor
-export { startPerformanceMonitor, stopPerformanceMonitor, subscribeToFps, isPerformanceMonitorRunning } from './PerformanceMonitor';
+export { startPerformanceMonitor, stopPerformanceMonitor, subscribeToFps, isPerformanceMonitorRunning, getFpsHistory, destroyPerformanceMonitor } from './PerformanceMonitor';
 
 // Error Handling
 export { ErrorBoundary, setupGlobalErrorHandlers } from './ErrorBoundary';

@@ -1,7 +1,7 @@
 export { setupNetworkMonitor, getRedirectedUrl, isInternalUrl, setNetworkConfig, type NetworkConfig } from './NetworkMonitor';
 export { setupConsoleMonitor } from './ConsoleMonitor';
 export { setupWebSocketMonitor } from './WebSocketMonitor';
-export { startPerformanceMonitor, stopPerformanceMonitor, subscribeToFps, isPerformanceMonitorRunning, type FpsStats } from './PerformanceMonitor';
+export { startPerformanceMonitor, stopPerformanceMonitor, subscribeToFps, isPerformanceMonitorRunning, getFpsHistory, destroyPerformanceMonitor, type FpsStats } from './PerformanceMonitor';
 export { ErrorBoundary, setupGlobalErrorHandlers } from './ErrorBoundary';
 export { getDeviceInfo, type DeviceInfoData } from './DeviceInfo';
 export { generateExportReport, formatReportAsText, type ExportReport } from './ExportReport';

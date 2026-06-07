@@ -8,7 +8,9 @@ var _react = require("react");
 const DebugContext = /*#__PURE__*/(0, _react.createContext)({
   openDebugger: () => {},
   closeDebugger: () => {},
-  isDebuggerOpen: false
+  isDebuggerOpen: false,
+  addCloseCleanup: () => () => {},
+  cleanupOnClose: () => {}
 });
 const useDebugger = () => {
   const ctx = (0, _react.useContext)(DebugContext);

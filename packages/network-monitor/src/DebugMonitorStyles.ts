@@ -654,6 +654,27 @@ const styleSheet = (C: ThemeColors = DARK_COLORS) =>
       marginBottom: 10,
       marginTop: 4,
     },
+
+    // ── Scroll-to-top Button ──────────────────────────────────────────
+    scrollTopBtn: {
+      position: 'absolute',
+      bottom: 30,
+      right: 20,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 6,
+    },
+    scrollTopBtnText: {
+      color: '#FFFFFF',
+      fontSize: 20,
+      fontWeight: '800',
+    },
   });
 
 export default styleSheet;

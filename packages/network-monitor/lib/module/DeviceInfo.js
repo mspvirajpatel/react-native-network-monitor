@@ -28,6 +28,17 @@ export const getDeviceInfo = () => {
       appVersion = pkg?.expo?.version || pkg?.version;
     } catch (_) {}
   }
+  let isEmulator = false;
+  try {
+    if (NativeModules.RNDeviceInfo?.isEmulator === true) {
+      isEmulator = true;
+    } else if (Platform.OS === 'ios') {
+      isEmulator = deviceName.includes('Simulator');
+    } else if (Platform.OS === 'android') {
+      const fingerprint = Platform.constants?.Fingerprint || '';
+      isEmulator = fingerprint.includes('generic') || fingerprint.includes('emulator');
+    }
+  } catch (_) {}
   return {
     platform: Platform.OS,
     osVersion: Platform.Version?.toString() || 'Unknown',
@@ -38,7 +49,7 @@ export const getDeviceInfo = () => {
     fontScale,
     appVersion,
     buildVersion,
-    isEmulator: Platform.isTV,
+    isEmulator,
     apiLevel: Platform.OS === 'android' ? Platform.Version?.toString() : undefined
   };
 };

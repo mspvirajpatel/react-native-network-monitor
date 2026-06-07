@@ -317,6 +317,20 @@ class DebugLogger {
   }
 
   /**
+   * destroy
+   *
+   * Clean up all listeners and pending timeouts. Call when the debugger
+   * is fully closed to prevent stale callbacks.
+   */
+  destroy() {
+    this.listeners = [];
+    if (this.notifyTimeout) {
+      clearTimeout(this.notifyTimeout);
+      this.notifyTimeout = null;
+    }
+  }
+
+  /**
    * init
    *
    * Placeholder for future initialization logic.

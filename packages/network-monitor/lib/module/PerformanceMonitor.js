@@ -30,7 +30,8 @@ const tick = timestamp => {
       minFps,
       maxFps,
       averageFps,
-      droppedFrames: Math.max(0, droppedFrames)
+      droppedFrames: Math.max(0, droppedFrames),
+      history: [...fpsHistory]
     };
     subscribers.forEach(s => s(stats));
     if (clamped < 30) {
@@ -68,4 +69,20 @@ export const subscribeToFps = cb => {
   };
 };
 export const isPerformanceMonitorRunning = () => isRunning;
+export const getFpsHistory = () => [...fpsHistory];
+
+/**
+ * destroyPerformanceMonitor
+ *
+ * Stop the monitor, clear all subscribers, and reset state.
+ * Call when the debugger is fully closed to prevent stale callbacks.
+ */
+export const destroyPerformanceMonitor = () => {
+  stopPerformanceMonitor();
+  subscribers = [];
+  fpsHistory = [];
+  minFps = 60;
+  maxFps = 0;
+  totalFrames = 0;
+};
 //# sourceMappingURL=PerformanceMonitor.js.map

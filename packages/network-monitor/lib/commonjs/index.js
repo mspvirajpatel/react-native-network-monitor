@@ -75,6 +75,12 @@ Object.defineProperty(exports, "createZustandMonitor", {
     return _StateMonitor.createZustandMonitor;
   }
 });
+Object.defineProperty(exports, "destroyPerformanceMonitor", {
+  enumerable: true,
+  get: function () {
+    return _PerformanceMonitor.destroyPerformanceMonitor;
+  }
+});
 Object.defineProperty(exports, "formatReportAsText", {
   enumerable: true,
   get: function () {
@@ -103,6 +109,12 @@ Object.defineProperty(exports, "getDeviceLanguage", {
   enumerable: true,
   get: function () {
     return _translations.getDeviceLanguage;
+  }
+});
+Object.defineProperty(exports, "getFpsHistory", {
+  enumerable: true,
+  get: function () {
+    return _PerformanceMonitor.getFpsHistory;
   }
 });
 Object.defineProperty(exports, "getRedirectedUrl", {

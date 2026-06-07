@@ -417,6 +417,17 @@ declare const styleSheet: (C?: ThemeColors) => {
         fontWeight: "900";
         letterSpacing: number;
     };
+    optionChip: {
+        flex: number;
+        paddingVertical: number;
+        borderRadius: number;
+        borderWidth: number;
+        alignItems: "center";
+    };
+    optionChipText: {
+        fontSize: number;
+        fontWeight: "700";
+    };
     toolBtn: {
         borderWidth: number;
         borderColor: string;
@@ -561,6 +572,16 @@ declare const styleSheet: (C?: ThemeColors) => {
         fontWeight: "800";
         letterSpacing: number;
         marginBottom: number;
+    };
+    sectionLabelRow: {
+        flexDirection: "row";
+        alignItems: "center";
+        justifyContent: "space-between";
+        marginBottom: number;
+    };
+    copyIconText: {
+        fontSize: number;
+        opacity: number;
     };
     sectionValue: {
         color: string;
@@ -757,6 +778,28 @@ declare const styleSheet: (C?: ThemeColors) => {
         letterSpacing: number;
         marginBottom: number;
         marginTop: number;
+    };
+    scrollTopBtn: {
+        position: "absolute";
+        bottom: number;
+        right: number;
+        width: number;
+        height: number;
+        borderRadius: number;
+        alignItems: "center";
+        justifyContent: "center";
+        shadowOffset: {
+            width: number;
+            height: number;
+        };
+        shadowOpacity: number;
+        shadowRadius: number;
+        elevation: number;
+    };
+    scrollTopBtnText: {
+        color: string;
+        fontSize: number;
+        fontWeight: "800";
     };
 };
 export default styleSheet;

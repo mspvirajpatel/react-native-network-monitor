@@ -2,7 +2,9 @@ import { createContext, useContext } from 'react';
 const DebugContext = /*#__PURE__*/createContext({
   openDebugger: () => {},
   closeDebugger: () => {},
-  isDebuggerOpen: false
+  isDebuggerOpen: false,
+  addCloseCleanup: () => () => {},
+  cleanupOnClose: () => {}
 });
 export const useDebugger = () => {
   const ctx = useContext(DebugContext);

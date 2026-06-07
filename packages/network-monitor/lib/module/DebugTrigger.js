@@ -2,7 +2,7 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { TouchableOpacity, Modal, View, Text, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Animated, PanResponder, Dimensions, useColorScheme } from "react-native";
 import { getStorageValue, setStorageValue } from "./storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -189,6 +189,17 @@ export const DebugTrigger = ({
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const [inputPassword, setInputPassword] = useState("");
   const timerRef = useRef(null);
+  const closeCleanupRef = useRef([]);
+  const addCloseCleanup = useCallback(fn => {
+    closeCleanupRef.current.push(fn);
+    return () => {
+      closeCleanupRef.current = closeCleanupRef.current.filter(f => f !== fn);
+    };
+  }, []);
+  const cleanupOnClose = useCallback(() => {
+    closeCleanupRef.current.forEach(fn => fn());
+    closeCleanupRef.current = [];
+  }, []);
   const activeLang = resolveLanguage(language);
   const t = TRANSLATIONS[activeLang] || TRANSLATIONS.en;
   const prevShowMonitor = useRef(false);
@@ -481,6 +492,7 @@ export const DebugTrigger = ({
     }
   }, [showPasswordModal]);
   const handleCloseDebugger = () => {
+    cleanupOnClose();
     setShowMonitor(false);
     setShowFloatingButton(false);
   };
@@ -488,7 +500,9 @@ export const DebugTrigger = ({
   const ctxValue = {
     openDebugger: handleOpen,
     closeDebugger: handleCloseDebugger,
-    isDebuggerOpen: showMonitor
+    isDebuggerOpen: showMonitor,
+    addCloseCleanup,
+    cleanupOnClose
   };
   return /*#__PURE__*/React.createElement(View, {
     style: {

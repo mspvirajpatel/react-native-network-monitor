@@ -14,6 +14,8 @@ var _DeviceInfo = require("./DeviceInfo");
 var _ExportReport = require("./ExportReport");
 var _NetworkMonitor = require("./NetworkMonitor");
 var _FileExporter = require("./FileExporter");
+var _DebugContext = require("./DebugContext");
+var _Toast = require("./Toast");
 var _translations = require("./translations");
 function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function (e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, default: e }; if (null === e || "object" != typeof e && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]); return f; })(e, t); }
 /* eslint-disable no-unused-vars */
@@ -45,7 +47,8 @@ const Section = ({
   json,
   color,
   selectable,
-  themeColors
+  themeColors,
+  onCopy
 }) => {
   const styles = (0, _DebugMonitorStyles.default)(themeColors);
   const resolvedJson = json !== undefined && json !== null ? tryParseJson(json) : json;
@@ -57,11 +60,26 @@ const Section = ({
   };
   if (!value && isEmpty(resolvedJson)) return null;
   const isJsonObject = resolvedJson !== null && typeof resolvedJson === 'object';
+  const copyValue = value || (isJsonObject ? JSON.stringify(resolvedJson, null, 2) : String(resolvedJson ?? ''));
   return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.sectionBox
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: styles.sectionLabelRow
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
     style: styles.sectionLabel
-  }, label), value ? /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+  }, label), onCopy && copyValue ? /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    hitSlop: {
+      top: 8,
+      bottom: 8,
+      left: 8,
+      right: 8
+    },
+    onPress: () => onCopy(copyValue)
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: [styles.copyIconText, {
+      color: themeColors?.primary || '#7C5CFC'
+    }]
+  }, "\uD83D\uDCCB")) : null), value ? /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
     selectable: selectable,
     style: [styles.sectionValue, color ? {
       color
@@ -103,9 +121,15 @@ const DebugMonitor = ({
   customActions
 }) => {
   const systemScheme = (0, _reactNative.useColorScheme)();
-  const effectiveTheme = theme === 'auto' ? systemScheme === 'light' ? 'light' : 'dark' : theme;
+  const [selectedTheme, setSelectedTheme] = (0, _react.useState)(theme);
+  const effectiveTheme = selectedTheme === 'auto' ? systemScheme === 'light' ? 'light' : 'dark' : selectedTheme;
   const C = (0, _DebugMonitorStyles.getColors)(effectiveTheme, customColors);
   const styles = (0, _DebugMonitorStyles.default)(C);
+
+  // Estimated fixed row height for FlatList getItemLayout performance optimization.
+  // Items may vary slightly in actual rendered height, but this constant keeps
+  // scroll offset calculation O(1) instead of measuring every row on mount.
+  const LOG_ITEM_HEIGHT = 112;
   const [logs, setLogs] = (0, _react.useState)(_Logger.Logger.getLogs());
   const [selectedLog, setSelectedLog] = (0, _react.useState)(null);
   const [activeTab, setActiveTab] = (0, _react.useState)('ALL');
@@ -118,6 +142,9 @@ const DebugMonitor = ({
   const [, setCustomUrlEntries] = (0, _react.useState)(_Logger.Logger.getCustomUrls());
   const [filterMethod] = (0, _react.useState)('ALL');
   const [fpsStats, setFpsStats] = (0, _react.useState)(null);
+  const [refreshing, setRefreshing] = (0, _react.useState)(false);
+  const [showScrollTop, setShowScrollTop] = (0, _react.useState)(false);
+  const flatListRef = (0, _react.useRef)(null);
   const [perfRunning, setPerfRunning] = (0, _react.useState)((0, _PerformanceMonitor.isPerformanceMonitorRunning)());
   const [deviceInfo] = (0, _react.useState)((0, _DeviceInfo.getDeviceInfo)());
   const allTabs = ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'];
@@ -152,6 +179,98 @@ const DebugMonitor = ({
     });
     return unsubFps;
   }, []);
+
+  // Register cleanup callbacks that run when the debugger closes
+  const {
+    addCloseCleanup
+  } = (0, _DebugContext.useDebugger)();
+  (0, _react.useEffect)(() => {
+    const unsub1 = addCloseCleanup(() => {
+      (0, _PerformanceMonitor.destroyPerformanceMonitor)();
+    });
+    return unsub1;
+  }, [addCloseCleanup]);
+
+  // Toast system for in-app notifications
+  const {
+    showToast,
+    Toasts
+  } = (0, _Toast.useToast)();
+  const showError = (0, _react.useCallback)(msg => showToast(msg, 'error'), [showToast]);
+  const showSuccess = (0, _react.useCallback)(msg => showToast(msg, 'success'), [showToast]);
+
+  /** Share/copy a text value via the system share sheet */
+  const handleCopy = (0, _react.useCallback)(text => {
+    _reactNative.Share.share({
+      message: text
+    }).catch(() => {});
+  }, []);
+
+  /** Pull-to-refresh: re-read logs from the Logger singleton */
+  const onRefresh = (0, _react.useCallback)(() => {
+    setRefreshing(true);
+    setLogs(_Logger.Logger.getLogs());
+    setRefreshing(false);
+  }, []);
+
+  /** Track scroll offset to toggle scroll-to-top button visibility */
+  const handleScroll = (0, _react.useCallback)(event => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setShowScrollTop(offsetY > 400);
+  }, []);
+
+  /** Scroll the main list back to the top */
+  const scrollToTop = (0, _react.useCallback)(() => {
+    flatListRef.current?.scrollToOffset({
+      offset: 0,
+      animated: true
+    });
+  }, []);
+
+  /** Map an HTTP method to a distinct badge color */
+  const getMethodColor = (0, _react.useCallback)(method => {
+    switch ((method || '').toUpperCase()) {
+      case 'GET':
+        return C.success;
+      case 'POST':
+        return C.primary;
+      case 'PUT':
+        return C.warning;
+      case 'PATCH':
+        return C.accent;
+      case 'DELETE':
+        return C.error;
+      default:
+        return C.textDim;
+    }
+  }, [C]);
+
+  /** Map a numeric HTTP status to a range-based color */
+  const getStatusColor = (0, _react.useCallback)(status => {
+    if (!status) return C.textDim;
+    if (status >= 200 && status < 300) return C.success;
+    if (status >= 300 && status < 400) return C.warning;
+    if (status >= 400 && status < 500) return C.warning; /* 4xx = amber */
+    if (status >= 500) return C.error;
+    return C.textDim;
+  }, [C]);
+
+  /** Map a LogType to a consistent accent color for the indicator strip */
+  const getTypeColor = (0, _react.useCallback)(item => {
+    if (item.type === 'error' || item.status && item.status >= 400) return C.error;
+    if (item.type === 'websocket') return C.accent;
+    if (item.type === 'performance') return C.warning;
+    if (item.type === 'action') return C.secondary;
+    if (item.type === 'database') return C.accent;
+    if (item.type === 'navigation') return C.warning;
+    if (item.type === 'info' && item.message?.startsWith('[ERROR]')) return C.error;
+    if (item.status) {
+      if (item.status >= 200 && item.status < 300) return C.success;
+      if (item.status >= 300 && item.status < 400) return C.warning;
+      if (item.status >= 400) return C.error;
+    }
+    return C.primary;
+  }, [C]);
   const t = (0, _react.useMemo)(() => {
     const lang = (0, _translations.resolveLanguage)(language);
     return _translations.TRANSLATIONS[lang] || _translations.TRANSLATIONS.en;
@@ -181,6 +300,16 @@ const DebugMonitor = ({
     }
     return result;
   }, [logs, activeTab, searchQuery, filterMethod, filterStatus, maxLogs]);
+  const handleClearLogs = () => {
+    _reactNative.Alert.alert(t.wipeAllRecords, 'Are you sure you want to delete all captured logs? This cannot be undone.', [{
+      text: t.cancel,
+      style: 'cancel'
+    }, {
+      text: 'Clear',
+      style: 'destructive',
+      onPress: () => _Logger.Logger.clearLogs()
+    }]);
+  };
   const handleExportJson = async () => {
     try {
       const report = (0, _ExportReport.generateExportReport)(logs);
@@ -189,7 +318,7 @@ const DebugMonitor = ({
         title: t.reportTitle
       });
     } catch (e) {
-      _reactNative.Alert.alert(t.error, t.couldNotShareReport);
+      showError(t.couldNotShareReport);
     }
   };
   const handleExportText = async () => {
@@ -201,7 +330,7 @@ const DebugMonitor = ({
         title: t.reportTitle
       });
     } catch (e) {
-      _reactNative.Alert.alert(t.error, t.couldNotShareReport);
+      showError(t.couldNotShareReport);
     }
   };
   const handleShareLog = async log => {
@@ -228,7 +357,7 @@ const DebugMonitor = ({
         title: t.logShareTitle
       });
     } catch (e) {
-      _reactNative.Alert.alert(t.error, t.couldNotShareLog);
+      showError(t.couldNotShareLog);
     }
   };
   const escapeShell = str => {
@@ -268,13 +397,13 @@ const DebugMonitor = ({
   const handleSaveSettings = () => {
     const newUrl = manualUrl.trim();
     if (!newUrl) {
-      _reactNative.Alert.alert(t.error, t.pleaseEnterUrl);
+      showError(t.pleaseEnterUrl);
       return;
     }
     try {
       const parsed = new URL(newUrl);
       if (!['http:', 'https:'].includes(parsed.protocol)) {
-        _reactNative.Alert.alert(t.error, t.urlMustStartWith);
+        showError(t.urlMustStartWith);
         return;
       }
       const host = parsed.hostname;
@@ -282,11 +411,11 @@ const DebugMonitor = ({
       const isLocal = host === 'localhost';
       const hasDot = host.includes('.');
       if (!isLocal && !isIp && !hasDot) {
-        _reactNative.Alert.alert(t.error, t.invalidDomainFormat);
+        showError(t.invalidDomainFormat);
         return;
       }
     } catch (e) {
-      _reactNative.Alert.alert(t.error, t.invalidUrlFormat);
+      showError(t.invalidUrlFormat);
       return;
     }
     _Logger.Logger.setBaseUrl(newUrl);
@@ -298,7 +427,7 @@ const DebugMonitor = ({
     setCustomUrlEntries(_Logger.Logger.getCustomUrls());
     setManualUrl('');
     if (onBaseUrlChange) onBaseUrlChange(newUrl);
-    _reactNative.Alert.alert(t.success, t.newSourceApplied);
+    showSuccess(t.newSourceApplied);
   };
 
   /**
@@ -327,8 +456,9 @@ const DebugMonitor = ({
     item
   }) => {
     const isConsoleError = item.type === 'info' && item.message?.startsWith('[ERROR]');
-    const isError = item.type === 'error' || item.status && item.status >= 400 || isConsoleError;
-    const indicatorColor = isError ? C.error : item.type === 'database' ? C.accent : item.type === 'navigation' ? C.warning : item.status && item.status >= 200 && item.status < 300 ? C.success : C.primary;
+    const typeColor = getTypeColor(item);
+    const methodColor = getMethodColor(item.method);
+    const statusColor = getStatusColor(item.status);
     return /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
       activeOpacity: 0.7,
       style: styles.logItem,
@@ -338,7 +468,7 @@ const DebugMonitor = ({
       }
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: [styles.logIndicator, {
-        backgroundColor: indicatorColor
+        backgroundColor: typeColor
       }]
     }), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: styles.logBody
@@ -346,19 +476,19 @@ const DebugMonitor = ({
       style: styles.logRow
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: [styles.logChip, {
-        backgroundColor: indicatorColor + '18'
+        backgroundColor: methodColor + '18'
       }]
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: [styles.logChipText, {
-        color: indicatorColor
+        color: methodColor
       }]
     }, item.method || (isConsoleError ? t.logChipError : (item.type || '').toUpperCase()))), item.status ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: [styles.logStatusChip, {
-        backgroundColor: indicatorColor + '18'
+        backgroundColor: statusColor + '18'
       }]
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: [styles.logStatusText, {
-        color: indicatorColor
+        color: statusColor
       }]
     }, item.status)) : null, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.logTime
@@ -527,6 +657,38 @@ const DebugMonitor = ({
       style: styles.settingsSectionLine
     }), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.settingsSectionTitle
+    }, "Theme")), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.settingsCard
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.cardInner, {
+        flexDirection: 'row',
+        gap: 8
+      }]
+    }, ['light', 'dark', 'auto'].map(mode => {
+      const active = selectedTheme === mode;
+      return /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+        key: mode,
+        activeOpacity: 0.7,
+        onPress: () => setSelectedTheme(mode),
+        style: [styles.optionChip, {
+          backgroundColor: active ? C.primary : C.surfaceLight,
+          borderColor: active ? C.primary : C.border
+        }]
+      }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+        style: [styles.optionChipText, {
+          color: active ? '#FFFFFF' : C.text
+        }]
+      }, mode.charAt(0).toUpperCase() + mode.slice(1)));
+    })))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.settingsSection, {
+        marginTop: 32
+      }]
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.settingsSectionHeader
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: styles.settingsSectionLine
+    }), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.settingsSectionTitle
     }, t.deviceInfo)), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: styles.settingsCard
     }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
@@ -588,7 +750,7 @@ const DebugMonitor = ({
         margin: 0,
         borderColor: C.error + '40'
       }],
-      onPress: () => _Logger.Logger.clearLogs()
+      onPress: handleClearLogs
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: [styles.toolBtnText, {
         color: C.error
@@ -644,7 +806,7 @@ const DebugMonitor = ({
           }
         }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
           style: [styles.logIndicator, {
-            backgroundColor: C.accent
+            backgroundColor: C.secondary
           }]
         }), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
           style: styles.logBody
@@ -652,11 +814,11 @@ const DebugMonitor = ({
           style: styles.logRow
         }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
           style: [styles.logChip, {
-            backgroundColor: C.accent + '18'
+            backgroundColor: C.secondary + '18'
           }]
         }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
           style: [styles.logChipText, {
-            color: C.accent
+            color: C.secondary
           }]
         }, sd?.actionType ? sd.actionType : t.action)), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
           style: styles.logTime
@@ -683,6 +845,11 @@ const DebugMonitor = ({
         }, t.snapshot))) : null));
       },
       keyExtractor: item => item.id,
+      getItemLayout: (_data, index) => ({
+        length: LOG_ITEM_HEIGHT,
+        offset: LOG_ITEM_HEIGHT * index,
+        index
+      }),
       contentContainerStyle: [styles.listContent, storeLogs.length === 0 && {
         flex: 1
       }],
@@ -776,21 +943,30 @@ const DebugMonitor = ({
         gap: 1,
         marginTop: 12
       }
-    }, Array.from({
-      length: Math.min(60, fps.fps)
-    }, (_, i) => {
-      const h = Math.max(4, fps.averageFps / 60 * 80);
+    }, fps.history.length > 0 ? fps.history.map((value, i) => {
+      const barHeight = Math.max(4, value / 60 * 80);
       return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
         key: i,
         style: {
           flex: 1,
-          height: h,
-          backgroundColor: barColor,
+          height: barHeight,
+          backgroundColor: value >= 55 ? C.success : value >= 30 ? C.warning : C.error,
           borderRadius: 1,
-          opacity: 0.5 + i / 60 * 0.5
+          opacity: 0.5 + i / fps.history.length * 0.5
         }
       });
-    })))), !fps && /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    }) : /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center'
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: {
+        color: C.textDim,
+        fontSize: 10
+      }
+    }, "Collecting data..."))))), !fps && /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: styles.perfCard
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: [styles.perfLabel, {
@@ -837,7 +1013,7 @@ const DebugMonitor = ({
       const isOpen = log.message?.includes('OPEN');
       const isClose = log.message?.includes('CLOSE');
       const isError = log.message?.includes('ERROR');
-      const badgeColor = isOpen ? C.success : isClose ? C.textDim : isError ? C.error : C.primary;
+      const badgeColor = isOpen ? C.success : isClose ? C.textDim : isError ? C.error : C.secondary;
       return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
         key: log.id,
         style: styles.wsItem
@@ -960,7 +1136,7 @@ const DebugMonitor = ({
     style: [styles.headerBtn, {
       backgroundColor: C.errorDim
     }],
-    onPress: () => _Logger.Logger.clearLogs()
+    onPress: handleClearLogs
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
     style: [styles.headerBtnText, {
       color: C.error,
@@ -1013,12 +1189,22 @@ const DebugMonitor = ({
   }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
     style: [styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]
   }, s === 'ALL' ? t.allFilter : s === 'OK' ? t.success2xx3xx : t.error4xx5xx)))) : null) : null, activeTab === 'SETTINGS' ? renderSettings() : activeTab === 'PERFORMANCE' ? renderPerformance() : activeTab === 'WEBSOCKET' ? renderWebSocket() : activeTab === 'STORE' ? renderStoreLogs() : /*#__PURE__*/_react.default.createElement(_reactNative.FlatList, {
+    ref: flatListRef,
     data: filteredLogs,
     renderItem: renderLogItem,
     keyExtractor: item => item.id,
+    getItemLayout: (_data, index) => ({
+      length: LOG_ITEM_HEIGHT,
+      offset: LOG_ITEM_HEIGHT * index,
+      index
+    }),
     contentContainerStyle: [styles.listContent, filteredLogs.length === 0 && {
       flex: 1
     }],
+    refreshing: refreshing,
+    onRefresh: onRefresh,
+    onScroll: handleScroll,
+    scrollEventThrottle: 16,
     ListEmptyComponent: /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: styles.emptyContainer
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
@@ -1028,7 +1214,16 @@ const DebugMonitor = ({
     }, t.empty), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.emptySubText
     }, t.emptySubtitle))
-  }), /*#__PURE__*/_react.default.createElement(_reactNative.Modal, {
+  }), showScrollTop && /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    activeOpacity: 0.8,
+    onPress: scrollToTop,
+    style: [styles.scrollTopBtn, {
+      backgroundColor: C.primary,
+      shadowColor: C.shadow
+    }]
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: styles.scrollTopBtnText
+  }, "\u2191")), /*#__PURE__*/_react.default.createElement(_reactNative.Modal, {
     transparent: true,
     visible: !!selectedLog,
     animationType: "slide",
@@ -1125,11 +1320,13 @@ const DebugMonitor = ({
     }, selectedLog?.type === 'info' || selectedLog?.type === 'websocket' || selectedLog?.type === 'performance' || selectedLog?.type === 'action' ? /*#__PURE__*/_react.default.createElement(_react.default.Fragment, null, selectedLog?.type === 'action' && selectedLog?.stateData ? /*#__PURE__*/_react.default.createElement(_react.default.Fragment, null, /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: t.actionType,
-      value: selectedLog.stateData.actionType || '-'
+      value: selectedLog.stateData.actionType || '-',
+      onCopy: handleCopy
     }), /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: t.actionPayload,
-      json: selectedLog.stateData.actionPayload
+      json: selectedLog.stateData.actionPayload,
+      onCopy: handleCopy
     }), selectedLog.stateData.diff ? Object.keys(selectedLog.stateData.diff).length > 0 ? /*#__PURE__*/_react.default.createElement(_react.default.Fragment, null, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: [styles.sectionLabel, {
         marginTop: 16,
@@ -1164,61 +1361,73 @@ const DebugMonitor = ({
     }, JSON.stringify(val.next, null, 2))) : null))) : null : selectedLog.stateData.snapshot ? /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: t.fullState,
-      json: selectedLog.stateData.snapshot
+      json: selectedLog.stateData.snapshot,
+      onCopy: handleCopy
     }) : null) : /*#__PURE__*/_react.default.createElement(_react.default.Fragment, null, /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       selectable: true,
       label: selectedLog?.type === 'websocket' ? t.websocketEvent : selectedLog?.type === 'performance' ? t.performanceData : t.logMessage,
-      value: selectedLog?.message
+      value: selectedLog?.message,
+      onCopy: handleCopy
     }), selectedLog?.url ? /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       selectable: true,
       label: t.url,
-      value: selectedLog.url
+      value: selectedLog.url,
+      onCopy: handleCopy
     }) : null, /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: t.data,
-      json: selectedLog?.requestData
+      json: selectedLog?.requestData,
+      onCopy: handleCopy
     }), selectedLog?.type === 'performance' && selectedLog?.durationMs ? /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: t.fps,
-      value: String(selectedLog.durationMs)
+      value: String(selectedLog.durationMs),
+      onCopy: handleCopy
     }) : null)) : detailTab === 'REQUEST' ? /*#__PURE__*/_react.default.createElement(_react.default.Fragment, null, /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: t.method,
-      value: selectedLog?.method
+      value: selectedLog?.method,
+      onCopy: handleCopy
     }), /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       selectable: true,
       label: t.url,
-      value: selectedLog?.isRedirected ? `${selectedLog?.originalUrl} ➔ ${selectedLog?.url}` : selectedLog?.url
+      value: selectedLog?.isRedirected ? `${selectedLog?.originalUrl} ➔ ${selectedLog?.url}` : selectedLog?.url,
+      onCopy: handleCopy
     }), /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: t.headers,
-      json: selectedLog?.requestHeaders
+      json: selectedLog?.requestHeaders,
+      onCopy: handleCopy
     }), /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: t.body,
-      json: selectedLog?.requestData
+      json: selectedLog?.requestData,
+      onCopy: handleCopy
     })) : /*#__PURE__*/_react.default.createElement(_react.default.Fragment, null, /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: t.statusCode,
       value: selectedLog?.status?.toString(),
-      color: selectedLog?.status && selectedLog.status >= 400 ? C.error : C.success
+      color: selectedLog?.status && selectedLog.status >= 400 ? C.error : C.success,
+      onCopy: handleCopy
     }), /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: t.headers,
-      json: selectedLog?.responseHeaders
+      json: selectedLog?.responseHeaders,
+      onCopy: handleCopy
     }), /*#__PURE__*/_react.default.createElement(Section, {
       themeColors: C,
       label: t.body,
-      json: selectedLog?.responseData
+      json: selectedLog?.responseData,
+      onCopy: handleCopy
     })), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: {
         height: 100
       }
     }))));
-  })())));
+  })())), Toasts);
 };
 exports.DebugMonitor = DebugMonitor;
 //# sourceMappingURL=DebugMonitor.js.map

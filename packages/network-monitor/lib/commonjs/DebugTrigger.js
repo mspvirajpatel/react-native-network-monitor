@@ -194,6 +194,17 @@ const DebugTrigger = ({
   const [showFloatingButton, setShowFloatingButton] = (0, _react.useState)(false);
   const [inputPassword, setInputPassword] = (0, _react.useState)("");
   const timerRef = (0, _react.useRef)(null);
+  const closeCleanupRef = (0, _react.useRef)([]);
+  const addCloseCleanup = (0, _react.useCallback)(fn => {
+    closeCleanupRef.current.push(fn);
+    return () => {
+      closeCleanupRef.current = closeCleanupRef.current.filter(f => f !== fn);
+    };
+  }, []);
+  const cleanupOnClose = (0, _react.useCallback)(() => {
+    closeCleanupRef.current.forEach(fn => fn());
+    closeCleanupRef.current = [];
+  }, []);
   const activeLang = (0, _translations.resolveLanguage)(language);
   const t = _translations.TRANSLATIONS[activeLang] || _translations.TRANSLATIONS.en;
   const prevShowMonitor = (0, _react.useRef)(false);
@@ -486,6 +497,7 @@ const DebugTrigger = ({
     }
   }, [showPasswordModal]);
   const handleCloseDebugger = () => {
+    cleanupOnClose();
     setShowMonitor(false);
     setShowFloatingButton(false);
   };
@@ -493,7 +505,9 @@ const DebugTrigger = ({
   const ctxValue = {
     openDebugger: handleOpen,
     closeDebugger: handleCloseDebugger,
-    isDebuggerOpen: showMonitor
+    isDebuggerOpen: showMonitor,
+    addCloseCleanup,
+    cleanupOnClose
   };
   return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: {

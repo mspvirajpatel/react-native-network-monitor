@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   TextInput,
   StatusBar,
   FlatList,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
   useColorScheme
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -203,6 +205,9 @@ export const DebugMonitor = ({
   const [, setCustomUrlEntries] = useState<CustomUrlEntry[]>(Logger.getCustomUrls());
   const [filterMethod] = useState<string | 'ALL'>('ALL');
   const [fpsStats, setFpsStats] = useState<FpsStats | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const flatListRef = useRef<FlatList<LogEntry>>(null);
   const [perfRunning, setPerfRunning] = useState(isPerformanceMonitorRunning());
   const [deviceInfo] = useState<DeviceInfoData>(getDeviceInfo());
 
@@ -267,6 +272,27 @@ export const DebugMonitor = ({
     },
     [],
   );
+
+  /** Pull-to-refresh: re-read logs from the Logger singleton */
+  const onRefresh = useCallback((): void => {
+    setRefreshing(true);
+    setLogs(Logger.getLogs());
+    setRefreshing(false);
+  }, []);
+
+  /** Track scroll offset to toggle scroll-to-top button visibility */
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
+      const offsetY = event.nativeEvent.contentOffset.y;
+      setShowScrollTop(offsetY > 400);
+    },
+    [],
+  );
+
+  /** Scroll the main list back to the top */
+  const scrollToTop = useCallback((): void => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
 
   /** Map an HTTP method to a distinct badge color */
   const getMethodColor = useCallback((method?: string): string => {
@@ -1180,6 +1206,7 @@ export const DebugMonitor = ({
           renderStoreLogs()
         ) : (
           <FlatList
+            ref={flatListRef}
             data={filteredLogs}
             renderItem={renderLogItem}
             keyExtractor={(item: LogEntry) => item.id}
@@ -1189,6 +1216,10 @@ export const DebugMonitor = ({
               index,
             })}
             contentContainerStyle={[styles.listContent, filteredLogs.length === 0 && { flex: 1 }]}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyIcon}>💬</Text>
@@ -1197,6 +1228,19 @@ export const DebugMonitor = ({
               </View>
             }
           />
+        )}
+
+        {showScrollTop && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={scrollToTop}
+            style={[
+              styles.scrollTopBtn,
+              { backgroundColor: C.primary, shadowColor: C.shadow },
+            ]}
+          >
+            <Text style={styles.scrollTopBtnText}>↑</Text>
+          </TouchableOpacity>
         )}
 
         <Modal

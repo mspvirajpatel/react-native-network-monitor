@@ -187,6 +187,13 @@ declare class DebugLogger {
      */
     subscribe(listener: (logs: LogEntry[]) => void): () => void;
     /**
+     * destroy
+     *
+     * Clean up all listeners and pending timeouts. Call when the debugger
+     * is fully closed to prevent stale callbacks.
+     */
+    destroy(): void;
+    /**
      * init
      *
      * Placeholder for future initialization logic.

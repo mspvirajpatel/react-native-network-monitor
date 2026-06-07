@@ -470,6 +470,17 @@ const styleSheet = (C = DARK_COLORS) => _reactNative.StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1
   },
+  optionChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center'
+  },
+  optionChipText: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
   toolBtn: {
     borderWidth: 1,
     borderColor: C.border,
@@ -617,6 +628,16 @@ const styleSheet = (C = DARK_COLORS) => _reactNative.StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.2,
     marginBottom: 8
+  },
+  sectionLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8
+  },
+  copyIconText: {
+    fontSize: 14,
+    opacity: 0.7
   },
   sectionValue: {
     color: C.text,
@@ -816,6 +837,29 @@ const styleSheet = (C = DARK_COLORS) => _reactNative.StyleSheet.create({
     letterSpacing: 1.5,
     marginBottom: 10,
     marginTop: 4
+  },
+  // ── Scroll-to-top Button ──────────────────────────────────────────
+  scrollTopBtn: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: {
+      width: 0,
+      height: 2
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6
+  },
+  scrollTopBtnText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800'
   }
 });
 var _default = exports.default = styleSheet;

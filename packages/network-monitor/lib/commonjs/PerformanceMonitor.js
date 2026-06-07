@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.subscribeToFps = exports.stopPerformanceMonitor = exports.startPerformanceMonitor = exports.isPerformanceMonitorRunning = void 0;
+exports.subscribeToFps = exports.stopPerformanceMonitor = exports.startPerformanceMonitor = exports.isPerformanceMonitorRunning = exports.getFpsHistory = exports.destroyPerformanceMonitor = void 0;
 var _Logger = require("./Logger");
 let animationFrameId = null;
 let frameCount = 0;
@@ -36,7 +36,8 @@ const tick = timestamp => {
       minFps,
       maxFps,
       averageFps,
-      droppedFrames: Math.max(0, droppedFrames)
+      droppedFrames: Math.max(0, droppedFrames),
+      history: [...fpsHistory]
     };
     subscribers.forEach(s => s(stats));
     if (clamped < 30) {
@@ -78,4 +79,22 @@ const subscribeToFps = cb => {
 exports.subscribeToFps = subscribeToFps;
 const isPerformanceMonitorRunning = () => isRunning;
 exports.isPerformanceMonitorRunning = isPerformanceMonitorRunning;
+const getFpsHistory = () => [...fpsHistory];
+
+/**
+ * destroyPerformanceMonitor
+ *
+ * Stop the monitor, clear all subscribers, and reset state.
+ * Call when the debugger is fully closed to prevent stale callbacks.
+ */
+exports.getFpsHistory = getFpsHistory;
+const destroyPerformanceMonitor = () => {
+  stopPerformanceMonitor();
+  subscribers = [];
+  fpsHistory = [];
+  minFps = 60;
+  maxFps = 0;
+  totalFrames = 0;
+};
+exports.destroyPerformanceMonitor = destroyPerformanceMonitor;
 //# sourceMappingURL=PerformanceMonitor.js.map

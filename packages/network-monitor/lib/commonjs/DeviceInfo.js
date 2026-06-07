@@ -34,6 +34,17 @@ const getDeviceInfo = () => {
       appVersion = pkg?.expo?.version || pkg?.version;
     } catch (_) {}
   }
+  let isEmulator = false;
+  try {
+    if (_reactNative.NativeModules.RNDeviceInfo?.isEmulator === true) {
+      isEmulator = true;
+    } else if (_reactNative.Platform.OS === 'ios') {
+      isEmulator = deviceName.includes('Simulator');
+    } else if (_reactNative.Platform.OS === 'android') {
+      const fingerprint = _reactNative.Platform.constants?.Fingerprint || '';
+      isEmulator = fingerprint.includes('generic') || fingerprint.includes('emulator');
+    }
+  } catch (_) {}
   return {
     platform: _reactNative.Platform.OS,
     osVersion: _reactNative.Platform.Version?.toString() || 'Unknown',
@@ -44,7 +55,7 @@ const getDeviceInfo = () => {
     fontScale,
     appVersion,
     buildVersion,
-    isEmulator: _reactNative.Platform.isTV,
+    isEmulator,
     apiLevel: _reactNative.Platform.OS === 'android' ? _reactNative.Platform.Version?.toString() : undefined
   };
 };
