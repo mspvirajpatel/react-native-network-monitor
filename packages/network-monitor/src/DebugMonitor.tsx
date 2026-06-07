@@ -277,6 +277,17 @@ export const DebugMonitor = ({
     return result;
   }, [logs, activeTab, searchQuery, filterMethod, filterStatus, maxLogs]);
 
+  const handleClearLogs = () => {
+    Alert.alert(
+      t.wipeAllRecords,
+      'Are you sure you want to delete all captured logs? This cannot be undone.',
+      [
+        { text: t.cancel, style: 'cancel' },
+        { text: 'Clear', style: 'destructive', onPress: () => Logger.clearLogs() },
+      ]
+    );
+  };
+
   const handleExportJson = async (): Promise<void> => {
     try {
       const report = generateExportReport(logs);
@@ -645,7 +656,7 @@ export const DebugMonitor = ({
 
               <TouchableOpacity
                 style={[styles.toolBtn, { margin: 0, borderColor: C.error + '40' }]}
-                onPress={() => Logger.clearLogs()}
+                onPress={handleClearLogs}
               >
                 <Text style={[styles.toolBtnText, { color: C.error }]}>{t.wipeAllRecords}</Text>
               </TouchableOpacity>
@@ -948,7 +959,7 @@ export const DebugMonitor = ({
             <View style={styles.headerActions}>
               <TouchableOpacity
                 style={[styles.headerBtn, { backgroundColor: C.errorDim }]}
-                onPress={() => Logger.clearLogs()}
+                onPress={handleClearLogs}
               >
                 <Text style={[styles.headerBtnText, { color: C.error, fontSize: 11, fontWeight: '800' }]}>
                   ✕
