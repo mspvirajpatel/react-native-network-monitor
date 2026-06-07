@@ -10,6 +10,7 @@ export {
   subscribeToFps,
   isPerformanceMonitorRunning,
   getFpsHistory,
+  destroyPerformanceMonitor,
   type FpsStats
 } from './PerformanceMonitor';
 

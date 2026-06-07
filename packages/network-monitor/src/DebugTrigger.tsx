@@ -232,6 +232,19 @@ export const DebugTrigger = ({
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const [inputPassword, setInputPassword] = useState("");
   const timerRef = useRef<any>(null);
+  const closeCleanupRef = useRef<Array<() => void>>([]);
+
+  const addCloseCleanup = useCallback((fn: () => void) => {
+    closeCleanupRef.current.push(fn);
+    return () => {
+      closeCleanupRef.current = closeCleanupRef.current.filter(f => f !== fn);
+    };
+  }, []);
+
+  const cleanupOnClose = useCallback(() => {
+    closeCleanupRef.current.forEach(fn => fn());
+    closeCleanupRef.current = [];
+  }, []);
 
   const activeLang = resolveLanguage(language);
   const t = TRANSLATIONS[activeLang] || TRANSLATIONS.en;
@@ -498,6 +511,7 @@ export const DebugTrigger = ({
   }, [showPasswordModal]);
 
   const handleCloseDebugger = () => {
+    cleanupOnClose();
     setShowMonitor(false);
     setShowFloatingButton(false);
   };
@@ -508,6 +522,8 @@ export const DebugTrigger = ({
     openDebugger: handleOpen,
     closeDebugger: handleCloseDebugger,
     isDebuggerOpen: showMonitor,
+    addCloseCleanup,
+    cleanupOnClose,
   };
 
   return (

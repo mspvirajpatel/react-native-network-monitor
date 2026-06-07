@@ -18,11 +18,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styleSheet, { getColors, DARK_COLORS, type ThemeColors } from './DebugMonitorStyles';
 import { Logger, LogEntry, CustomUrlEntry } from './Logger';
-import { FpsStats, subscribeToFps, isPerformanceMonitorRunning, startPerformanceMonitor, stopPerformanceMonitor } from './PerformanceMonitor';
+import { FpsStats, subscribeToFps, isPerformanceMonitorRunning, startPerformanceMonitor, stopPerformanceMonitor, destroyPerformanceMonitor } from './PerformanceMonitor';
 import { getDeviceInfo, DeviceInfoData } from './DeviceInfo';
 import { generateExportReport, formatReportAsText } from './ExportReport';
 import { isInternalUrl } from './NetworkMonitor';
 import { saveReportToJson, saveReportToText } from './FileExporter';
+import { useDebugger } from './DebugContext';
 import {
   TRANSLATIONS,
   resolveLanguage,
@@ -215,6 +216,15 @@ export const DebugMonitor = ({
     });
     return unsubFps;
   }, []);
+
+  // Register cleanup callbacks that run when the debugger closes
+  const { addCloseCleanup } = useDebugger();
+  useEffect(() => {
+    const unsub1 = addCloseCleanup(() => {
+      destroyPerformanceMonitor();
+    });
+    return unsub1;
+  }, [addCloseCleanup]);
 
   const t = useMemo(() => {
     const lang = resolveLanguage(language);

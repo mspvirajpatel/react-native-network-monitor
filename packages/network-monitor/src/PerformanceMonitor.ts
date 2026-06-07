@@ -94,3 +94,18 @@ export const subscribeToFps = (cb: (stats: FpsStats) => void) => {
 export const isPerformanceMonitorRunning = () => isRunning;
 
 export const getFpsHistory = () => [...fpsHistory];
+
+/**
+ * destroyPerformanceMonitor
+ *
+ * Stop the monitor, clear all subscribers, and reset state.
+ * Call when the debugger is fully closed to prevent stale callbacks.
+ */
+export const destroyPerformanceMonitor = () => {
+  stopPerformanceMonitor();
+  subscribers = [];
+  fpsHistory = [];
+  minFps = 60;
+  maxFps = 0;
+  totalFrames = 0;
+};
