@@ -46,17 +46,17 @@ export const setupGlobalErrorHandlers = () => {
   });
 
   if (typeof global !== 'undefined') {
-    const originalOnError = (global as any).onerror;
-    (global as any).onerror = (message: string, source?: string, lineno?: number, colno?: number, error?: Error) => {
+    const originalOnError = (globalThis as Record<string, unknown>).onerror;
+    (globalThis as Record<string, unknown>).onerror = (message: string, source?: string, lineno?: number, colno?: number, error?: Error) => {
       Logger.logInfo(`[GLOBAL ERROR] ${message} at ${source}:${lineno}:${colno}`);
-      if (originalOnError) originalOnError(message, source, lineno, colno, error);
+      if (typeof originalOnError === 'function') (originalOnError as Function)(message, source, lineno, colno, error);
     };
 
-    const originalOnRejection = (global as any).onunhandledrejection;
-    (global as any).onunhandledrejection = (event: any) => {
-      const reason = event?.reason || event?.detail?.reason || 'Unknown';
+    const originalOnRejection = (globalThis as Record<string, unknown>).onunhandledrejection;
+    (globalThis as any).onunhandledrejection = (event: { reason?: { message?: string }; detail?: { reason?: unknown } }) => {
+      const reason = event?.reason || (event as any)?.detail?.reason || 'Unknown';
       Logger.logInfo(`[UNHANDLED PROMISE REJECTION] ${reason?.message || reason}`);
-      if (originalOnRejection) originalOnRejection(event);
+      if (typeof originalOnRejection === 'function') (originalOnRejection as (e: unknown) => void)(event);
     };
   }
 };

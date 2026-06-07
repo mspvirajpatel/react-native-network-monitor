@@ -106,7 +106,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const predefinedList = baseUrls ? (Array.isArray(baseUrls) ? baseUrls : []) : [];
   const allCustoms = Logger.getCustomUrls();
 
-  const allSources: { title: string; url?: string; type: 'env' | 'url'; val: any }[] = [];
+  type SourceItem =
+    | { title: string; url?: string; type: 'url'; val: string }
+    | { title: string; url?: undefined; type: 'env'; val: 'prod' | 'demo' };
+  const allSources: SourceItem[] = [];
 
   if (prodUrl) {
     allSources.push({ title: t.productionApi, url: prodUrl, type: 'url', val: prodUrl });
@@ -223,7 +226,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <Text style={styles.settingsSectionTitle}>{t.selectSource}</Text>
           </View>
           <View style={styles.settingsCard}>
-            {allSources.map((item: any, index: number) => {
+            {allSources.map((item: SourceItem, index: number) => {
               const isUrlActive = baseUrl !== '' && baseUrl === item.val;
               const isEnvActive =
                 baseUrl === '' && item.type === 'env' && envConfig?.currentEnv === item.val;

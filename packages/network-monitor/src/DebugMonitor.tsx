@@ -78,7 +78,7 @@ export type DetailTab = 'REQUEST' | 'RESPONSE';
  * @param props - { label, value, json, color, selectable }
  * @returns JSX.Element | null
  */
-const tryParseJson = (data: any): any => {
+const tryParseJson = (data: unknown): unknown => {
   if (typeof data === 'string') {
     try {
       return JSON.parse(data);
@@ -100,17 +100,17 @@ const Section = ({
 }: {
   label: string;
   value?: string | null;
-  json?: any;
+  json?: unknown;
   color?: string;
   selectable?: boolean;
-  themeColors?: any;
+  themeColors?: ThemeColors;
   onCopy?: (text: string) => void;
 }): React.ReactElement | null => {
   const styles = styleSheet(themeColors);
 
   const resolvedJson = json !== undefined && json !== null ? tryParseJson(json) : json;
 
-  const isEmpty = (val: any): boolean => {
+  const isEmpty = (val: unknown): boolean => {
     if (val === null || val === undefined) return true;
     if (typeof val === 'string') return val.length === 0;
     if (typeof val === 'object') return Object.keys(val).length === 0;
@@ -444,7 +444,7 @@ export const DebugMonitor = ({
     return str.replace(/'/g, "'\\''");
   };
 
-  const formatCurlBody = (data: any): string => {
+  const formatCurlBody = (data: unknown): string => {
     if (data === null || data === undefined) return '';
     if (typeof data === 'string') return data;
     return JSON.stringify(data);

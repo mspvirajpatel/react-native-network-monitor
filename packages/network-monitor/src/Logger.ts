@@ -49,7 +49,7 @@ class DebugLogger {
   public isNetworkPatched = false;
   private baseUrl: string = '';
   private customUrls: CustomUrlEntry[] = [];
-  private notifyTimeout: any = null;
+  private notifyTimeout: ReturnType<typeof setTimeout> | null = null;
   private maxLogs: number = 500;
 
   /**
@@ -184,7 +184,7 @@ class DebugLogger {
    * @param data - Data to calculate size for
    * @returns Size string in kilobytes
    */
-  private calculateSize(data: any): string {
+  private calculateSize(data: unknown): string {
     try {
       if (!data) return '0.00 kb';
       const str = typeof data === 'string' ? data : JSON.stringify(data);

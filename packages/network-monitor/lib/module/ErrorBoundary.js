@@ -35,16 +35,16 @@ export const setupGlobalErrorHandlers = () => {
     }
   });
   if (typeof global !== 'undefined') {
-    const originalOnError = global.onerror;
-    global.onerror = (message, source, lineno, colno, error) => {
+    const originalOnError = globalThis.onerror;
+    globalThis.onerror = (message, source, lineno, colno, error) => {
       Logger.logInfo(`[GLOBAL ERROR] ${message} at ${source}:${lineno}:${colno}`);
-      if (originalOnError) originalOnError(message, source, lineno, colno, error);
+      if (typeof originalOnError === 'function') originalOnError(message, source, lineno, colno, error);
     };
-    const originalOnRejection = global.onunhandledrejection;
-    global.onunhandledrejection = event => {
+    const originalOnRejection = globalThis.onunhandledrejection;
+    globalThis.onunhandledrejection = event => {
       const reason = event?.reason || event?.detail?.reason || 'Unknown';
       Logger.logInfo(`[UNHANDLED PROMISE REJECTION] ${reason?.message || reason}`);
-      if (originalOnRejection) originalOnRejection(event);
+      if (typeof originalOnRejection === 'function') originalOnRejection(event);
     };
   }
 };
