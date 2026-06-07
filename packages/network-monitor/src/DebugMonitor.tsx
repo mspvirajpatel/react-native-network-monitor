@@ -89,7 +89,8 @@ const Section = ({
   json,
   color,
   selectable,
-  themeColors
+  themeColors,
+  onCopy
 }: {
   label: string;
   value?: string | null;
@@ -97,6 +98,7 @@ const Section = ({
   color?: string;
   selectable?: boolean;
   themeColors?: any;
+  onCopy?: (text: string) => void;
 }): React.ReactElement | null => {
   const styles = styleSheet(themeColors);
 
@@ -113,9 +115,23 @@ const Section = ({
 
   const isJsonObject = resolvedJson !== null && typeof resolvedJson === 'object';
 
+  const copyValue = value || (isJsonObject ? JSON.stringify(resolvedJson, null, 2) : String(resolvedJson ?? ''));
+
   return (
     <View style={styles.sectionBox}>
-      <Text style={styles.sectionLabel}>{label}</Text>
+      <View style={styles.sectionLabelRow}>
+        <Text style={styles.sectionLabel}>{label}</Text>
+        {onCopy && copyValue ? (
+          <TouchableOpacity
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => onCopy(copyValue)}
+          >
+            <Text style={[styles.copyIconText, { color: themeColors?.primary || '#7C5CFC' }]}>
+              📋
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
       {value ? (
         <Text
           selectable={selectable}
@@ -242,6 +258,14 @@ export const DebugMonitor = ({
   const showSuccess = useCallback(
     (msg: string) => showToast(msg, 'success'),
     [showToast],
+  );
+
+  /** Share/copy a text value via the system share sheet */
+  const handleCopy = useCallback(
+    (text: string): void => {
+      Share.share({ message: text }).catch(() => {});
+    },
+    [],
   );
 
   /** Map an HTTP method to a distinct badge color */
@@ -1310,8 +1334,8 @@ export const DebugMonitor = ({
                     <>
                       {selectedLog?.type === 'action' && selectedLog?.stateData ? (
                         <>
-                          <Section themeColors={C} label={t.actionType} value={selectedLog.stateData.actionType || '-'} />
-                          <Section themeColors={C} label={t.actionPayload} json={selectedLog.stateData.actionPayload} />
+                          <Section themeColors={C} label={t.actionType} value={selectedLog.stateData.actionType || '-'} onCopy={handleCopy} />
+                          <Section themeColors={C} label={t.actionPayload} json={selectedLog.stateData.actionPayload} onCopy={handleCopy} />
                           {selectedLog.stateData.diff ? (
                             Object.keys(selectedLog.stateData.diff).length > 0 ? (
                               <>
@@ -1344,25 +1368,25 @@ export const DebugMonitor = ({
                               </>
                             ) : null
                           ) : selectedLog.stateData.snapshot ? (
-                            <Section themeColors={C} label={t.fullState} json={selectedLog.stateData.snapshot} />
+                            <Section themeColors={C} label={t.fullState} json={selectedLog.stateData.snapshot} onCopy={handleCopy} />
                           ) : null}
                         </>
                       ) : (
                         <>
-                          <Section themeColors={C} selectable label={selectedLog?.type === 'websocket' ? t.websocketEvent : selectedLog?.type === 'performance' ? t.performanceData : t.logMessage} value={selectedLog?.message} />
+                          <Section themeColors={C} selectable label={selectedLog?.type === 'websocket' ? t.websocketEvent : selectedLog?.type === 'performance' ? t.performanceData : t.logMessage} value={selectedLog?.message} onCopy={handleCopy} />
                           {selectedLog?.url ? (
-                            <Section themeColors={C} selectable label={t.url} value={selectedLog.url} />
+                            <Section themeColors={C} selectable label={t.url} value={selectedLog.url} onCopy={handleCopy} />
                           ) : null}
-                          <Section themeColors={C} label={t.data} json={selectedLog?.requestData} />
+                          <Section themeColors={C} label={t.data} json={selectedLog?.requestData} onCopy={handleCopy} />
                           {selectedLog?.type === 'performance' && selectedLog?.durationMs ? (
-                            <Section themeColors={C} label={t.fps} value={String(selectedLog.durationMs)} />
+                            <Section themeColors={C} label={t.fps} value={String(selectedLog.durationMs)} onCopy={handleCopy} />
                           ) : null}
                         </>
                       )}
                     </>
                   ) : detailTab === 'REQUEST' ? (
                     <>
-                      <Section themeColors={C} label={t.method} value={selectedLog?.method} />
+                      <Section themeColors={C} label={t.method} value={selectedLog?.method} onCopy={handleCopy} />
                       <Section
                         themeColors={C}
                         selectable
@@ -1372,9 +1396,10 @@ export const DebugMonitor = ({
                             ? `${selectedLog?.originalUrl} ➔ ${selectedLog?.url}`
                             : selectedLog?.url
                         }
+                        onCopy={handleCopy}
                       />
-                      <Section themeColors={C} label={t.headers} json={selectedLog?.requestHeaders} />
-                      <Section themeColors={C} label={t.body} json={selectedLog?.requestData} />
+                      <Section themeColors={C} label={t.headers} json={selectedLog?.requestHeaders} onCopy={handleCopy} />
+                      <Section themeColors={C} label={t.body} json={selectedLog?.requestData} onCopy={handleCopy} />
                     </>
                   ) : (
                     <>
@@ -1387,9 +1412,10 @@ export const DebugMonitor = ({
                             ? C.error
                             : C.success
                         }
+                        onCopy={handleCopy}
                       />
-                      <Section themeColors={C} label={t.headers} json={selectedLog?.responseHeaders} />
-                      <Section themeColors={C} label={t.body} json={selectedLog?.responseData} />
+                      <Section themeColors={C} label={t.headers} json={selectedLog?.responseHeaders} onCopy={handleCopy} />
+                      <Section themeColors={C} label={t.body} json={selectedLog?.responseData} onCopy={handleCopy} />
                     </>
                   )}
                   <View style={{ height: 100 }} />

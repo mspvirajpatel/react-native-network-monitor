@@ -521,6 +521,16 @@ const styleSheet = (C: ThemeColors = DARK_COLORS) =>
       letterSpacing: 1.2,
       marginBottom: 8,
     },
+    sectionLabelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    copyIconText: {
+      fontSize: 14,
+      opacity: 0.7,
+    },
     sectionValue: {
       color: C.text,
       fontSize: 14,
