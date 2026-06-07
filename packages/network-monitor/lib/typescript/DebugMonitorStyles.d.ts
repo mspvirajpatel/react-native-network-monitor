@@ -270,6 +270,47 @@ declare const styleSheet: (C?: ThemeColors) => {
         fontSize: number;
         fontWeight: "700";
     };
+    liveDot: {
+        width: number;
+        height: number;
+        borderRadius: number;
+        marginStart: number;
+    };
+    loadingOverlay: {
+        backgroundColor: string;
+        alignItems: "center";
+        justifyContent: "center";
+        zIndex: number;
+        position: "absolute";
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+    };
+    loadingBox: {
+        backgroundColor: string;
+        borderRadius: number;
+        padding: number;
+        alignItems: "center";
+        minWidth: number;
+        shadowColor: string;
+        shadowOffset: {
+            width: number;
+            height: number;
+        };
+        shadowOpacity: number;
+        shadowRadius: number;
+        elevation: number;
+    };
+    loadingSpinner: {
+        marginBottom: number;
+    };
+    loadingText: {
+        color: string;
+        fontSize: number;
+        fontWeight: "700";
+        letterSpacing: number;
+    };
     emptyContainer: {
         flex: number;
         alignItems: "center";

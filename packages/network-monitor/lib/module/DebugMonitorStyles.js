@@ -312,6 +312,45 @@ const styleSheet = (C = DARK_COLORS) => StyleSheet.create({
     fontSize: 10,
     fontWeight: '700'
   },
+  // ── Live Activity Dot ───────────────────────────────────────────────────
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginStart: 4
+  },
+  // ── Loading Overlay ────────────────────────────────────────────────────
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: C.overlay,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999
+  },
+  loadingBox: {
+    backgroundColor: C.surfaceElevated,
+    borderRadius: 16,
+    padding: 28,
+    alignItems: 'center',
+    minWidth: 140,
+    shadowColor: C.shadow,
+    shadowOffset: {
+      width: 0,
+      height: 4
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10
+  },
+  loadingSpinner: {
+    marginBottom: 12
+  },
+  loadingText: {
+    color: C.text,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3
+  },
   // ── Empty State ───────────────────────────────────────────────────────
   emptyContainer: {
     flex: 1,

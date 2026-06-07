@@ -150,6 +150,38 @@ const DebugMonitor = ({
   const flatListRef = (0, _react.useRef)(null);
   const [perfRunning, setPerfRunning] = (0, _react.useState)((0, _PerformanceMonitor.isPerformanceMonitorRunning)());
   const [deviceInfo] = (0, _react.useState)((0, _DeviceInfo.getDeviceInfo)());
+  const [loading, setLoading] = (0, _react.useState)('Initializing...');
+  const [receiving, setReceiving] = (0, _react.useState)(false);
+  const receivingTimer = (0, _react.useRef)(null);
+
+  // Dismiss the initial loading state once the first render settles
+  (0, _react.useEffect)(() => {
+    const timer = setTimeout(() => setLoading(null), 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Track when new logs arrive to show an activity pulse in the header
+  (0, _react.useEffect)(() => {
+    if (logs.length > 0) {
+      setReceiving(true);
+      if (receivingTimer.current) clearTimeout(receivingTimer.current);
+      receivingTimer.current = setTimeout(() => setReceiving(false), 1200);
+    }
+    return () => {
+      if (receivingTimer.current) clearTimeout(receivingTimer.current);
+    };
+  }, [logs.length]);
+  const LoadingOverlay = loading ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: styles.loadingOverlay
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: styles.loadingBox
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.ActivityIndicator, {
+    size: "large",
+    color: C.primary,
+    style: styles.loadingSpinner
+  }), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: styles.loadingText
+  }, loading))) : null;
   const allTabs = ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'];
   const features = {
     network: true,
@@ -317,10 +349,18 @@ const DebugMonitor = ({
     }, {
       text: 'Clear',
       style: 'destructive',
-      onPress: () => _Logger.Logger.clearLogs()
+      onPress: () => {
+        setLoading('Clearing logs...');
+        // Use a microtask delay so the loading overlay renders before the clear
+        setTimeout(() => {
+          _Logger.Logger.clearLogs();
+          setLoading(null);
+        }, 50);
+      }
     }]);
   };
   const handleShareLog = async log => {
+    setLoading('Preparing share...');
     try {
       const parts = [];
       parts.push(`Type: ${log.type}`, `Time: ${log.timestamp}`);
@@ -345,6 +385,8 @@ const DebugMonitor = ({
       });
     } catch (e) {
       showError(t.couldNotShareLog);
+    } finally {
+      setLoading(null);
     }
   };
   const escapeShell = str => {
@@ -483,7 +525,11 @@ const DebugMonitor = ({
       fontSize: 10,
       fontWeight: '700'
     }
-  }, logs.length))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+  }, logs.length), receiving && /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: [styles.liveDot, {
+      backgroundColor: C.success
+    }]
+  }))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.headerActions
   }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
     accessibilityLabel: t.wipeAllRecords || 'Clear logs',
@@ -696,13 +742,20 @@ const DebugMonitor = ({
     }, t.shareEntry)), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
       accessibilityRole: "menuitem",
       style: styles.detailDropdownItem,
-      onPress: () => {
+      onPress: async () => {
         if (selectedLog) {
-          const curl = generateCurl(selectedLog);
-          _reactNative.Share.share({
-            message: curl || JSON.stringify(selectedLog, null, 2),
-            title: t.curlCommand
-          });
+          setLoading('Generating cURL...');
+          try {
+            const curl = generateCurl(selectedLog);
+            await _reactNative.Share.share({
+              message: curl || JSON.stringify(selectedLog, null, 2),
+              title: t.curlCommand
+            });
+          } catch {
+            // user cancelled share
+          } finally {
+            setLoading(null);
+          }
         }
         setShowMenu(false);
       }
@@ -860,7 +913,7 @@ const DebugMonitor = ({
         height: 100
       }
     }))));
-  })())), Toasts);
+  })())), Toasts, LoadingOverlay);
 };
 exports.DebugMonitor = DebugMonitor;
 //# sourceMappingURL=DebugMonitor.js.map

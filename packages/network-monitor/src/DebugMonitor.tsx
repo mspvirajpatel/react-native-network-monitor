@@ -17,6 +17,7 @@ import {
   NativeScrollEvent,
   Animated,
   useColorScheme,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styleSheet, { getColors, DARK_COLORS, type ThemeColors } from './DebugMonitorStyles';
@@ -213,6 +214,36 @@ export const DebugMonitor = ({
   const flatListRef = useRef<FlatList<LogEntry>>(null);
   const [perfRunning, setPerfRunning] = useState(isPerformanceMonitorRunning());
   const [deviceInfo] = useState<DeviceInfoData>(getDeviceInfo());
+  const [loading, setLoading] = useState<string | null>('Initializing...');
+  const [receiving, setReceiving] = useState(false);
+  const receivingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Dismiss the initial loading state once the first render settles
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(null), 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Track when new logs arrive to show an activity pulse in the header
+  useEffect(() => {
+    if (logs.length > 0) {
+      setReceiving(true);
+      if (receivingTimer.current) clearTimeout(receivingTimer.current);
+      receivingTimer.current = setTimeout(() => setReceiving(false), 1200);
+    }
+    return () => {
+      if (receivingTimer.current) clearTimeout(receivingTimer.current);
+    };
+  }, [logs.length]);
+
+  const LoadingOverlay = loading ? (
+    <View style={styles.loadingOverlay}>
+      <View style={styles.loadingBox}>
+        <ActivityIndicator size="large" color={C.primary} style={styles.loadingSpinner} />
+        <Text style={styles.loadingText}>{loading}</Text>
+      </View>
+    </View>
+  ) : null;
 
   const allTabs = ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'] as TabType[];
 
@@ -410,12 +441,24 @@ export const DebugMonitor = ({
       'Are you sure you want to delete all captured logs? This cannot be undone.',
       [
         { text: t.cancel, style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: () => Logger.clearLogs() },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            setLoading('Clearing logs...');
+            // Use a microtask delay so the loading overlay renders before the clear
+            setTimeout(() => {
+              Logger.clearLogs();
+              setLoading(null);
+            }, 50);
+          },
+        },
       ]
     );
   };
 
   const handleShareLog = async (log: LogEntry): Promise<void> => {
+    setLoading('Preparing share...');
     try {
       const parts: string[] = [];
       parts.push(`Type: ${log.type}`, `Time: ${log.timestamp}`);
@@ -437,6 +480,8 @@ export const DebugMonitor = ({
       await Share.share({ message: parts.join('\n'), title: t.logShareTitle });
     } catch (e) {
       showError(t.couldNotShareLog);
+    } finally {
+      setLoading(null);
     }
   };
 
@@ -555,6 +600,9 @@ export const DebugMonitor = ({
                 <Text style={{ color: C.textDim, fontSize: 10, fontWeight: '700' }}>
                   {logs.length}
                 </Text>
+                {receiving && (
+                  <View style={[styles.liveDot, { backgroundColor: C.success }]} />
+                )}
               </View>
             </View>
             <View style={styles.headerActions}>
@@ -816,13 +864,20 @@ export const DebugMonitor = ({
                       <TouchableOpacity
                         accessibilityRole="menuitem"
                         style={styles.detailDropdownItem}
-                        onPress={() => {
+                        onPress={async () => {
                           if (selectedLog) {
-                            const curl = generateCurl(selectedLog);
-                            Share.share({
-                              message: curl || JSON.stringify(selectedLog, null, 2),
-                              title: t.curlCommand,
-                            });
+                            setLoading('Generating cURL...');
+                            try {
+                              const curl = generateCurl(selectedLog);
+                              await Share.share({
+                                message: curl || JSON.stringify(selectedLog, null, 2),
+                                title: t.curlCommand,
+                              });
+                            } catch {
+                              // user cancelled share
+                            } finally {
+                              setLoading(null);
+                            }
                           }
                           setShowMenu(false);
                         }}
@@ -994,6 +1049,7 @@ export const DebugMonitor = ({
         </Modal>
       </View>
       {Toasts}
+      {LoadingOverlay}
     </View>
   );
 };
