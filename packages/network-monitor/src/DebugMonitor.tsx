@@ -164,8 +164,9 @@ export const DebugMonitor = ({
   customActions
 }: DebugMonitorProps) => {
   const systemScheme = useColorScheme();
+  const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark' | 'auto'>(theme);
   const effectiveTheme: 'dark' | 'light' =
-    theme === 'auto' ? (systemScheme === 'light' ? 'light' : 'dark') : theme;
+    selectedTheme === 'auto' ? (systemScheme === 'light' ? 'light' : 'dark') : selectedTheme;
   const C = getColors(effectiveTheme, customColors);
   const styles = styleSheet(C);
 
@@ -676,6 +677,43 @@ export const DebugMonitor = ({
               <TouchableOpacity style={styles.saveBtn} onPress={handleSaveSettings}>
                 <Text style={styles.saveBtnText}>{t.applyChanges}</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <View style={[styles.settingsSection, { marginTop: 32 }]}>
+            <View style={styles.settingsSectionHeader}>
+              <View style={styles.settingsSectionLine} />
+              <Text style={styles.settingsSectionTitle}>Theme</Text>
+          </View>
+          <View style={styles.settingsCard}>
+            <View style={[styles.cardInner, { flexDirection: 'row', gap: 8 }]}>
+              {(['light', 'dark', 'auto'] as const).map((mode) => {
+                const active = selectedTheme === mode;
+                return (
+                  <TouchableOpacity
+                    key={mode}
+                    activeOpacity={0.7}
+                    onPress={() => setSelectedTheme(mode)}
+                    style={[
+                      styles.optionChip,
+                      {
+                        backgroundColor: active ? C.primary : C.surfaceLight,
+                        borderColor: active ? C.primary : C.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.optionChipText,
+                        { color: active ? '#FFFFFF' : C.text },
+                      ]}
+                    >
+                      {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         </View>

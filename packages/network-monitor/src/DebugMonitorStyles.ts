@@ -397,6 +397,17 @@ const styleSheet = (C: ThemeColors = DARK_COLORS) =>
       fontWeight: '900',
       letterSpacing: 1,
     },
+    optionChip: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      alignItems: 'center',
+    },
+    optionChipText: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
     toolBtn: {
       borderWidth: 1,
       borderColor: C.border,
