@@ -57,6 +57,18 @@ Object.defineProperty(exports, "TRANSLATIONS", {
     return _translations.TRANSLATIONS;
   }
 });
+Object.defineProperty(exports, "clearNavigationEvents", {
+  enumerable: true,
+  get: function () {
+    return _NavigationTracker.clearNavigationEvents;
+  }
+});
+Object.defineProperty(exports, "clearNotificationHistory", {
+  enumerable: true,
+  get: function () {
+    return _NotificationMonitor.clearNotificationHistory;
+  }
+});
 Object.defineProperty(exports, "clearPersistedLogs", {
   enumerable: true,
   get: function () {
@@ -73,6 +85,18 @@ Object.defineProperty(exports, "createZustandMonitor", {
   enumerable: true,
   get: function () {
     return _StateMonitor.createZustandMonitor;
+  }
+});
+Object.defineProperty(exports, "destroyNavigationTracker", {
+  enumerable: true,
+  get: function () {
+    return _NavigationTracker.destroyNavigationTracker;
+  }
+});
+Object.defineProperty(exports, "destroyNotificationMonitor", {
+  enumerable: true,
+  get: function () {
+    return _NotificationMonitor.destroyNotificationMonitor;
   }
 });
 Object.defineProperty(exports, "destroyPerformanceMonitor", {
@@ -117,10 +141,34 @@ Object.defineProperty(exports, "getFpsHistory", {
     return _PerformanceMonitor.getFpsHistory;
   }
 });
+Object.defineProperty(exports, "getNavigationEvents", {
+  enumerable: true,
+  get: function () {
+    return _NavigationTracker.getNavigationEvents;
+  }
+});
+Object.defineProperty(exports, "getNavigationFlow", {
+  enumerable: true,
+  get: function () {
+    return _NavigationTracker.getNavigationFlow;
+  }
+});
+Object.defineProperty(exports, "getNotificationHistory", {
+  enumerable: true,
+  get: function () {
+    return _NotificationMonitor.getNotificationHistory;
+  }
+});
 Object.defineProperty(exports, "getRedirectedUrl", {
   enumerable: true,
   get: function () {
     return _NetworkMonitor.getRedirectedUrl;
+  }
+});
+Object.defineProperty(exports, "getScreenStats", {
+  enumerable: true,
+  get: function () {
+    return _NavigationTracker.getScreenStats;
   }
 });
 Object.defineProperty(exports, "getStorageAdapter", {
@@ -135,10 +183,34 @@ Object.defineProperty(exports, "isInternalUrl", {
     return _NetworkMonitor.isInternalUrl;
   }
 });
+Object.defineProperty(exports, "isNavigationTrackerActive", {
+  enumerable: true,
+  get: function () {
+    return _NavigationTracker.isNavigationTrackerActive;
+  }
+});
+Object.defineProperty(exports, "isNotificationMonitorPatched", {
+  enumerable: true,
+  get: function () {
+    return _NotificationMonitor.isNotificationMonitorPatched;
+  }
+});
 Object.defineProperty(exports, "isPerformanceMonitorRunning", {
   enumerable: true,
   get: function () {
     return _PerformanceMonitor.isPerformanceMonitorRunning;
+  }
+});
+Object.defineProperty(exports, "logNavigationEvent", {
+  enumerable: true,
+  get: function () {
+    return _NavigationTracker.logNavigationEvent;
+  }
+});
+Object.defineProperty(exports, "logNotification", {
+  enumerable: true,
+  get: function () {
+    return _NotificationMonitor.logNotification;
   }
 });
 Object.defineProperty(exports, "resolveLanguage", {
@@ -195,10 +267,22 @@ Object.defineProperty(exports, "setupGlobalErrorHandlers", {
     return _ErrorBoundary.setupGlobalErrorHandlers;
   }
 });
+Object.defineProperty(exports, "setupNavigationTracker", {
+  enumerable: true,
+  get: function () {
+    return _NavigationTracker.setupNavigationTracker;
+  }
+});
 Object.defineProperty(exports, "setupNetworkMonitor", {
   enumerable: true,
   get: function () {
     return _NetworkMonitor.setupNetworkMonitor;
+  }
+});
+Object.defineProperty(exports, "setupNotificationMonitor", {
+  enumerable: true,
+  get: function () {
+    return _NotificationMonitor.setupNotificationMonitor;
   }
 });
 Object.defineProperty(exports, "setupWebSocketMonitor", {
@@ -237,6 +321,18 @@ Object.defineProperty(exports, "subscribeToFps", {
     return _PerformanceMonitor.subscribeToFps;
   }
 });
+Object.defineProperty(exports, "subscribeToNavigation", {
+  enumerable: true,
+  get: function () {
+    return _NavigationTracker.subscribeToNavigation;
+  }
+});
+Object.defineProperty(exports, "subscribeToNotifications", {
+  enumerable: true,
+  get: function () {
+    return _NotificationMonitor.subscribeToNotifications;
+  }
+});
 Object.defineProperty(exports, "subscribeToState", {
   enumerable: true,
   get: function () {
@@ -258,6 +354,8 @@ var _DeviceInfo = require("./DeviceInfo");
 var _ExportReport = require("./ExportReport");
 var _FileExporter = require("./FileExporter");
 var _PersistenceManager = require("./PersistenceManager");
+var _NotificationMonitor = require("./NotificationMonitor");
+var _NavigationTracker = require("./NavigationTracker");
 var _Logger = require("./Logger");
 var _DebugMonitor = require("./DebugMonitor");
 var _DebugTrigger = require("./DebugTrigger");

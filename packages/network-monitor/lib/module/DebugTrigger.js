@@ -15,6 +15,8 @@ import { setupWebSocketMonitor } from "./WebSocketMonitor";
 import { startPerformanceMonitor } from "./PerformanceMonitor";
 import { ErrorBoundary, setupGlobalErrorHandlers } from "./ErrorBoundary";
 import { startPersistence, restoreLogs } from "./PersistenceManager";
+import { setupNotificationMonitor } from "./NotificationMonitor";
+import { setupNavigationTracker } from "./NavigationTracker";
 import { TRANSLATIONS, resolveLanguage } from "./translations";
 const COLORS = {
   background: "#0F172A",
@@ -216,6 +218,8 @@ export const DebugTrigger = ({
     if (features.errorBoundary) setupGlobalErrorHandlers();
     if (features.performance) startPerformanceMonitor();
     if (features.persistence) startPersistence(15000);
+    if (features.notifications) setupNotificationMonitor();
+    if (features.navigationFlow) setupNavigationTracker();
     restoreLogs().then(savedLogs => {
       if (savedLogs.length > 0) {
         savedLogs.forEach(log => {

@@ -34,6 +34,35 @@ export {
   clearPersistedLogs
 } from './PersistenceManager';
 
+// Notification Monitor
+export {
+  setupNotificationMonitor,
+  destroyNotificationMonitor,
+  logNotification,
+  getNotificationHistory,
+  clearNotificationHistory,
+  subscribeToNotifications,
+  isNotificationMonitorPatched,
+  type NotificationData
+} from './NotificationMonitor';
+
+// Navigation Tracker
+export {
+  setupNavigationTracker,
+  destroyNavigationTracker,
+  logNavigationEvent,
+  getNavigationEvents,
+  clearNavigationEvents,
+  subscribeToNavigation,
+  isNavigationTrackerActive,
+  getNavigationFlow,
+  getScreenStats,
+  type NavigationEvent,
+  type NavigationFlowNode,
+  type NavigationFlowEdge,
+  type NavigationMethod
+} from './NavigationTracker';
+
 // Logger (singleton)
 export { Logger, type LogEntry, type LogType, type CustomUrlEntry, type StateActionData } from './Logger';
 

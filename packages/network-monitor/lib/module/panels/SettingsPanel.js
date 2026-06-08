@@ -4,6 +4,7 @@ import styleSheet from '../DebugMonitorStyles';
 import { Logger } from '../Logger';
 import { generateExportReport, formatReportAsText } from '../ExportReport';
 import { saveReportToJson, saveReportToText } from '../FileExporter';
+import { generateHarExport } from '../harExport';
 /**
  * DeviceInfoSection
  *
@@ -191,6 +192,20 @@ const SettingsPanel = ({
         message: text,
         title: t.reportTitle
       });
+    } catch (e) {
+      showError(t.couldNotShareReport);
+    }
+  };
+
+  /** Export HAR archive */
+  const handleExportHar = async () => {
+    try {
+      const har = generateHarExport(logs);
+      await Share.share({
+        message: JSON.stringify(har, null, 2),
+        title: t.reportTitle
+      });
+      showSuccess(t.harSavedToFile);
     } catch (e) {
       showError(t.couldNotShareReport);
     }
@@ -409,6 +424,19 @@ const SettingsPanel = ({
       color: C.accent
     }]
   }, t.saveTextReportToFile)), /*#__PURE__*/React.createElement(TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.exportHarReport,
+    style: [styles.toolBtn, {
+      margin: 0,
+      marginBottom: 16,
+      borderColor: C.accent + '40'
+    }],
+    onPress: handleExportHar
+  }, /*#__PURE__*/React.createElement(Text, {
+    style: [styles.toolBtnText, {
+      color: C.accent
+    }]
+  }, t.exportHarReport)), /*#__PURE__*/React.createElement(TouchableOpacity, {
     accessibilityRole: "button",
     accessibilityLabel: t.wipeAllRecords,
     style: [styles.toolBtn, {

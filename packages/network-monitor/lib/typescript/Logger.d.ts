@@ -1,4 +1,4 @@
-export type LogType = 'request' | 'response' | 'error' | 'info' | 'database' | 'navigation' | 'websocket' | 'performance' | 'action';
+export type LogType = 'request' | 'response' | 'error' | 'info' | 'database' | 'navigation' | 'websocket' | 'performance' | 'action' | 'notification' | 'navigationFlow';
 export interface StateActionData {
     storeName: string;
     actionType?: string;

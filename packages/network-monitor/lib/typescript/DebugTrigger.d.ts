@@ -36,6 +36,8 @@ export interface DebugTriggerProps {
         errorBoundary?: boolean;
         performance?: boolean;
         persistence?: boolean;
+        notifications?: boolean;
+        navigationFlow?: boolean;
     };
 }
 /**

@@ -7,6 +7,8 @@ export { getDeviceInfo, type DeviceInfoData } from './DeviceInfo';
 export { generateExportReport, formatReportAsText, type ExportReport } from './ExportReport';
 export { saveReportToFile, saveReportToJson, saveReportToText } from './FileExporter';
 export { startPersistence, stopPersistence, restoreLogs, clearPersistedLogs } from './PersistenceManager';
+export { setupNotificationMonitor, destroyNotificationMonitor, logNotification, getNotificationHistory, clearNotificationHistory, subscribeToNotifications, isNotificationMonitorPatched, type NotificationData } from './NotificationMonitor';
+export { setupNavigationTracker, destroyNavigationTracker, logNavigationEvent, getNavigationEvents, clearNavigationEvents, subscribeToNavigation, isNavigationTrackerActive, getNavigationFlow, getScreenStats, type NavigationEvent, type NavigationFlowNode, type NavigationFlowEdge, type NavigationMethod } from './NavigationTracker';
 export { Logger, type LogEntry, type LogType, type CustomUrlEntry, type StateActionData } from './Logger';
 export { DebugMonitor, type TabType } from './DebugMonitor';
 export { DebugTrigger, type DebugTriggerProps } from './DebugTrigger';

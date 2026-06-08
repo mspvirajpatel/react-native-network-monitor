@@ -114,6 +114,8 @@ interface DemoProps {
   featPerformance: boolean;
   featErrorBoundary: boolean;
   featPersistence: boolean;
+  featNotifications: boolean;
+  featNavigationFlow: boolean;
   setClicksNeeded: (n: number) => void;
   setPassOptional: (v: boolean) => void;
   setPassFreq: (v: "all-time" | "per-install" | "app-active") => void;
@@ -134,6 +136,8 @@ interface DemoProps {
   setFeatPerformance: (v: boolean) => void;
   setFeatErrorBoundary: (v: boolean) => void;
   setFeatPersistence: (v: boolean) => void;
+  setFeatNotifications: (v: boolean) => void;
+  setFeatNavigationFlow: (v: boolean) => void;
 }
 
 /* ── AppContent — scrollable demo UI with feature buttons ── */
@@ -172,12 +176,16 @@ function AppContent({
   featPerformance,
   featErrorBoundary,
   featPersistence,
+  featNotifications,
+  featNavigationFlow,
   setFeatNetwork,
   setFeatConsole,
   setFeatWebsocket,
   setFeatPerformance,
   setFeatErrorBoundary,
   setFeatPersistence,
+  setFeatNotifications,
+  setFeatNavigationFlow,
 }: DemoProps) {
   const { openDebugger, closeDebugger, isDebuggerOpen } = useDebugger();
   const wsRef = useRef<WebSocket | null>(null);
@@ -531,6 +539,16 @@ function AppContent({
             label="persistence"
             value={featPersistence}
             onValue={setFeatPersistence}
+          />
+          <PropToggle
+            label="notifications"
+            value={featNotifications}
+            onValue={setFeatNotifications}
+          />
+          <PropToggle
+            label="navigationFlow"
+            value={featNavigationFlow}
+            onValue={setFeatNavigationFlow}
           />
         </View>
 
@@ -898,6 +916,8 @@ export default function App() {
   const [featPerformance, setFeatPerformance] = useState(true);
   const [featErrorBoundary, setFeatErrorBoundary] = useState(true);
   const [featPersistence, setFeatPersistence] = useState(true);
+  const [featNotifications, setFeatNotifications] = useState(true);
+  const [featNavigationFlow, setFeatNavigationFlow] = useState(true);
 
   return (
     <SafeAreaProvider>
@@ -941,6 +961,8 @@ export default function App() {
           performance: featPerformance,
           errorBoundary: featErrorBoundary,
           persistence: featPersistence,
+          notifications: featNotifications,
+          navigationFlow: featNavigationFlow,
         }}
       >
         <AppContent
@@ -978,12 +1000,16 @@ export default function App() {
           featPerformance={featPerformance}
           featErrorBoundary={featErrorBoundary}
           featPersistence={featPersistence}
+          featNotifications={featNotifications}
+          featNavigationFlow={featNavigationFlow}
           setFeatNetwork={setFeatNetwork}
           setFeatConsole={setFeatConsole}
           setFeatWebsocket={setFeatWebsocket}
           setFeatPerformance={setFeatPerformance}
           setFeatErrorBoundary={setFeatErrorBoundary}
           setFeatPersistence={setFeatPersistence}
+          setFeatNotifications={setFeatNotifications}
+          setFeatNavigationFlow={setFeatNavigationFlow}
         />
       </DebugTrigger>
     </SafeAreaProvider>

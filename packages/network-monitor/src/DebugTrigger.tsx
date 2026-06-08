@@ -30,6 +30,8 @@ import { setupWebSocketMonitor } from "./WebSocketMonitor";
 import { startPerformanceMonitor } from "./PerformanceMonitor";
 import { ErrorBoundary, setupGlobalErrorHandlers } from "./ErrorBoundary";
 import { startPersistence, restoreLogs } from "./PersistenceManager";
+import { setupNotificationMonitor } from "./NotificationMonitor";
+import { setupNavigationTracker } from "./NavigationTracker";
 import { getColors, type ThemeColors } from "./DebugMonitorStyles";
 import {
   TRANSLATIONS,
@@ -68,6 +70,8 @@ export interface DebugTriggerProps {
     errorBoundary?: boolean;
     performance?: boolean;
     persistence?: boolean;
+    notifications?: boolean;
+    navigationFlow?: boolean;
   };
 }
 
@@ -264,6 +268,8 @@ export const DebugTrigger = ({
     if (features.errorBoundary) setupGlobalErrorHandlers();
     if (features.performance) startPerformanceMonitor();
     if (features.persistence) startPersistence(15000);
+    if (features.notifications) setupNotificationMonitor();
+    if (features.navigationFlow) setupNavigationTracker();
 
     restoreLogs().then((savedLogs) => {
       if (savedLogs.length > 0) {

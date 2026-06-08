@@ -10,6 +10,7 @@ var _DebugMonitorStyles = _interopRequireDefault(require("../DebugMonitorStyles"
 var _Logger = require("../Logger");
 var _ExportReport = require("../ExportReport");
 var _FileExporter = require("../FileExporter");
+var _harExport = require("../harExport");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }
 /**
  * DeviceInfoSection
@@ -198,6 +199,20 @@ const SettingsPanel = ({
         message: text,
         title: t.reportTitle
       });
+    } catch (e) {
+      showError(t.couldNotShareReport);
+    }
+  };
+
+  /** Export HAR archive */
+  const handleExportHar = async () => {
+    try {
+      const har = (0, _harExport.generateHarExport)(logs);
+      await _reactNative.Share.share({
+        message: JSON.stringify(har, null, 2),
+        title: t.reportTitle
+      });
+      showSuccess(t.harSavedToFile);
     } catch (e) {
       showError(t.couldNotShareReport);
     }
@@ -416,6 +431,19 @@ const SettingsPanel = ({
       color: C.accent
     }]
   }, t.saveTextReportToFile)), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.exportHarReport,
+    style: [styles.toolBtn, {
+      margin: 0,
+      marginBottom: 16,
+      borderColor: C.accent + '40'
+    }],
+    onPress: handleExportHar
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: [styles.toolBtnText, {
+      color: C.accent
+    }]
+  }, t.exportHarReport)), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
     accessibilityRole: "button",
     accessibilityLabel: t.wipeAllRecords,
     style: [styles.toolBtn, {

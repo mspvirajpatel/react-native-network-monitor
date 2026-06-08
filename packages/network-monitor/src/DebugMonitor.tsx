@@ -16,6 +16,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Animated,
+  PanResponder,
   useColorScheme,
   ActivityIndicator,
 } from 'react-native';
@@ -23,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styleSheet, { getColors, DARK_COLORS, type ThemeColors } from './DebugMonitorStyles';
 import { Logger, LogEntry } from './Logger';
 import { FpsStats, subscribeToFps, isPerformanceMonitorRunning, startPerformanceMonitor, stopPerformanceMonitor, destroyPerformanceMonitor } from './PerformanceMonitor';
+import { MemStats, subscribeToMemory, isMemoryMonitorRunning, startMemoryMonitor, stopMemoryMonitor, destroyMemoryMonitor } from './MemoryMonitor';
 import { getDeviceInfo, DeviceInfoData } from './DeviceInfo';
 import { isInternalUrl } from './NetworkMonitor';
 import { useDebugger } from './DebugContext';
@@ -33,6 +35,9 @@ import StorePanel from './panels/StorePanel';
 import PerformancePanel from './panels/PerformancePanel';
 import WebSocketPanel from './panels/WebSocketPanel';
 import TimelinePanel from './panels/TimelinePanel';
+import MemoryPanel from './panels/MemoryPanel';
+import NotificationPanel from './panels/NotificationPanel';
+import NavigationFlowPanel from './panels/NavigationFlowPanel';
 import {
   TRANSLATIONS,
   resolveLanguage,
@@ -58,6 +63,9 @@ interface DebugMonitorProps {
     console?: boolean;
     websocket?: boolean;
     performance?: boolean;
+    memory?: boolean;
+    notifications?: boolean;
+    navigationFlow?: boolean;
   };
   headerTitle?: string;
   searchPlaceholder?: string;
@@ -68,7 +76,7 @@ interface DebugMonitorProps {
   }[];
 }
 
-export type TabType = 'ALL' | 'NETWORK' | 'LOGS' | 'WEBSOCKET' | 'PERFORMANCE' | 'STORE' | 'SETTINGS';
+export type TabType = 'ALL' | 'NETWORK' | 'LOGS' | 'WEBSOCKET' | 'PERFORMANCE' | 'MEMORY' | 'STORE' | 'SETTINGS' | 'NOTIFICATIONS' | 'NAVFLOW';
 export type DetailTab = 'REQUEST' | 'RESPONSE';
 
 /**
@@ -80,6 +88,16 @@ export type DetailTab = 'REQUEST' | 'RESPONSE';
  * @param props - { label, value, json, color, selectable }
  * @returns JSX.Element | null
  */
+/** Extract domain from a URL string */
+const extractDomain = (url: string): string => {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname;
+  } catch {
+    return url;
+  }
+};
+
 const tryParseJson = (data: unknown): unknown => {
   if (typeof data === 'string') {
     try {
@@ -205,20 +223,80 @@ export const DebugMonitor = ({
   const [detailTab, setDetailTab] = useState<DetailTab>('RESPONSE');
   const [showMenu, setShowMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'ALL' | 'OK' | 'ERR'>('ALL');
+  const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [baseUrl, setBaseUrl] = useState(Logger.getBaseUrl());
   const [manualUrl, setManualUrl] = useState('');
-  const [filterMethod] = useState<string | 'ALL'>('ALL');
+  const [filterMethod, setFilterMethod] = useState<string | 'ALL'>('ALL');
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  const [timeRangeMinutes, setTimeRangeMinutes] = useState<number | null>(null);
+  const [regexMode, setRegexMode] = useState(false);
   const [fpsStats, setFpsStats] = useState<FpsStats | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showWaterfall, setShowWaterfall] = useState(false);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [searchPresets, setSearchPresets] = useState<Array<{name: string; query: string; method: string | 'ALL'; status: typeof filterStatus; domain: string | null; time: number | null; regex: boolean}>>([]);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [showCompareModal, setShowCompareModal] = useState(false);
   const flatListRef = useRef<FlatList<LogEntry>>(null);
+  const [memStats, setMemStats] = useState<MemStats | null>(null);
   const [perfRunning, setPerfRunning] = useState(isPerformanceMonitorRunning());
+  const [memRunning, setMemRunning] = useState(isMemoryMonitorRunning());
   const [deviceInfo] = useState<DeviceInfoData>(getDeviceInfo());
   const [loading, setLoading] = useState<string | null>('Initializing...');
   const [receiving, setReceiving] = useState(false);
   const receivingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Swipe-to-dismiss animation
+  const detailTranslateY = useRef(new Animated.Value(0)).current;
+  const detailOpacity = useRef(new Animated.Value(1)).current;
+
+  const detailPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 10 && Math.abs(gestureState.dx) < Math.abs(gestureState.dy);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          detailTranslateY.setValue(gestureState.dy);
+          detailOpacity.setValue(Math.max(0, 1 - gestureState.dy / 300));
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 120 || gestureState.vy > 0.5) {
+          Animated.parallel([
+            Animated.timing(detailTranslateY, {
+              toValue: 500,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(detailOpacity, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            setSelectedLog(null);
+            setShowMenu(false);
+            detailTranslateY.setValue(0);
+            detailOpacity.setValue(1);
+          });
+        } else {
+          Animated.parallel([
+            Animated.spring(detailTranslateY, {
+              toValue: 0,
+              useNativeDriver: true,
+            }),
+            Animated.spring(detailOpacity, {
+              toValue: 1,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        }
+      },
+    })
+  ).current;
 
   // Dismiss the initial loading state once the first render settles
   useEffect(() => {
@@ -247,14 +325,17 @@ export const DebugMonitor = ({
     </View>
   ) : null;
 
-  const allTabs = ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'] as TabType[];
+  const allTabs = ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'MEMORY', 'STORE', 'SETTINGS', 'NOTIFICATIONS', 'NAVFLOW'] as TabType[];
 
-  const features = { network: true, console: true, websocket: true, performance: true, ...featuresProp };
+  const features = { network: true, console: true, websocket: true, performance: true, memory: true, notifications: true, navigationFlow: true, ...featuresProp };
   const tabFeatureMap: Partial<Record<TabType, keyof typeof features>> = {
     NETWORK: 'network',
     LOGS: 'console',
     WEBSOCKET: 'websocket',
     PERFORMANCE: 'performance',
+    MEMORY: 'memory',
+    NOTIFICATIONS: 'notifications',
+    NAVFLOW: 'navigationFlow',
   };
 
   const availableTabs = allTabs.filter(
@@ -273,6 +354,13 @@ export const DebugMonitor = ({
       Logger.setMaxLogs(maxLogs);
     }
   }, [maxLogs]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToMemory((stats) => {
+      setMemStats(stats);
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const unsubscribe = Logger.subscribe((newLogs) => {
@@ -294,7 +382,13 @@ export const DebugMonitor = ({
     const unsub1 = addCloseCleanup(() => {
       destroyPerformanceMonitor();
     });
-    return unsub1;
+    const unsub2 = addCloseCleanup(() => {
+      destroyMemoryMonitor();
+    });
+    return () => {
+      unsub1();
+      unsub2();
+    };
   }, [addCloseCleanup]);
 
   // Toast system for in-app notifications
@@ -391,7 +485,10 @@ export const DebugMonitor = ({
         .length,
       WEBSOCKET: logs.filter((l: LogEntry) => l.type === 'websocket').length,
       PERFORMANCE: logs.filter((l: LogEntry) => l.type === 'performance').length,
+      MEMORY: logs.filter((l: LogEntry) => l.type === 'performance').length,
       STORE: logs.filter((l: LogEntry) => l.type === 'action').length,
+      NOTIFICATIONS: logs.filter((l: LogEntry) => l.type === 'notification').length,
+      NAVFLOW: logs.filter((l: LogEntry) => l.type === 'navigation' || l.type === 'navigationFlow').length,
       SETTINGS: 0
     };
   }, [logs]);
@@ -415,27 +512,48 @@ export const DebugMonitor = ({
 
       if (!typeMatch && activeTab !== 'SETTINGS') return false;
 
-      const matchesSearch =
-        searchQuery === '' ||
-        log.url?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.message?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = (() => {
+        if (searchQuery === '') return true;
+        if (regexMode) {
+          try {
+            const re = new RegExp(searchQuery, 'i');
+            return (log.url && re.test(log.url)) || (log.message && re.test(log.message));
+          } catch {
+            return true;
+          }
+        }
+        return (
+          (log.url?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (log.message?.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+      })();
 
       const matchesMethod = filterMethod === 'ALL' || log.method === filterMethod;
 
       const matchesStatus =
-        filterStatus === 'ALL'
+        filterStatus === 'ALL' || filterStatus === 'BOOKMARKED'
           ? true
           : filterStatus === 'ERR'
             ? !!log.status && log.status >= 400
             : !!log.status && log.status < 400;
 
-      return matchesSearch && matchesMethod && matchesStatus;
+      const matchesBookmark = filterStatus !== 'BOOKMARKED' || bookmarkedIds.has(log.id);
+
+      const matchesDomain = selectedDomain === null || (log.url && extractDomain(log.url) === selectedDomain);
+
+      const matchesTime = timeRangeMinutes === null || (() => {
+        const logTime = new Date(log.timestamp).getTime();
+        const cutoff = Date.now() - timeRangeMinutes * 60 * 1000;
+        return logTime >= cutoff;
+      })();
+
+      return matchesSearch && matchesMethod && matchesStatus && matchesBookmark && matchesDomain && matchesTime;
     });
     if (maxLogs && maxLogs > 0) {
       return result.slice(0, maxLogs);
     }
     return result;
-  }, [logs, activeTab, searchQuery, filterMethod, filterStatus, maxLogs]);
+  }, [logs, activeTab, searchQuery, filterMethod, filterStatus, maxLogs, bookmarkedIds, selectedDomain, timeRangeMinutes, regexMode]);
 
   const handleClearLogs = () => {
     Alert.alert(
@@ -617,6 +735,24 @@ export const DebugMonitor = ({
                 second: '2-digit'
               })}
             </Text>
+            <TouchableOpacity
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel={bookmarkedIds.has(item.id) ? 'Remove bookmark' : 'Bookmark'}
+              onPress={() => {
+                const next = new Set(bookmarkedIds);
+                if (next.has(item.id)) {
+                  next.delete(item.id);
+                } else {
+                  next.add(item.id);
+                }
+                setBookmarkedIds(next);
+              }}
+            >
+              <Text style={{ color: bookmarkedIds.has(item.id) ? '#FFD700' : C.textDim, fontSize: 14, marginLeft: 6 }}>
+                {bookmarkedIds.has(item.id) ? '★' : '☆'}
+              </Text>
+            </TouchableOpacity>
           </View>
           <Text style={styles.logUrl} numberOfLines={2}>
             {item.isRedirected ? `${item.originalUrl} ➔ ${item.url}` : item.url || item.message}
@@ -701,9 +837,15 @@ export const DebugMonitor = ({
                       ? t.ws
                       : tab === 'PERFORMANCE'
                         ? t.fps
-                        : tab === 'STORE'
-                          ? t.store
-                          : t.settings;
+                        : tab === 'MEMORY'
+                          ? t.memory
+                          : tab === 'STORE'
+                            ? t.store
+                            : tab === 'NOTIFICATIONS'
+                              ? t.notifications || 'Notifs'
+                              : tab === 'NAVFLOW'
+                                ? t.navFlow || 'Flow'
+                                : t.settings;
               return (
                 <TouchableOpacity
                   key={tab}
@@ -751,8 +893,8 @@ export const DebugMonitor = ({
             </View>
             {activeTab === 'NETWORK' ? (
               <View style={styles.filterRow}>
-                {(['ALL', 'OK', 'ERR'] as const).map((s) => {
-                  const pillLabel = s === 'ALL' ? t.allFilter : s === 'OK' ? t.success2xx3xx : t.error4xx5xx;
+                {(['ALL', 'OK', 'ERR', 'BOOKMARKED'] as const).map((s) => {
+                  const pillLabel = s === 'ALL' ? t.allFilter : s === 'OK' ? t.success2xx3xx : s === 'ERR' ? t.error4xx5xx : t.bookmarked;
                   return (
                     <TouchableOpacity
                       key={s}
@@ -779,9 +921,296 @@ export const DebugMonitor = ({
                   </Text>
                 </TouchableOpacity>
               </View>
+            ) : activeTab === 'LOGS' ? (
+              <View style={styles.filterRow}>
+                {(['ALL', 'OK', 'ERR'] as const).map((s) => {
+                  const pillLabel = s === 'ALL' ? t.allFilter : s === 'OK' ? t.info || 'Info' : t.error4xx5xx;
+                  return (
+                    <TouchableOpacity
+                      key={s}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: filterStatus === s }}
+                      accessibilityLabel={pillLabel}
+                      style={[styles.filterPill, filterStatus === s && styles.filterPillActive]}
+                      onPress={() => setFilterStatus(s)}
+                    >
+                      <Text style={[styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]}>
+                        {pillLabel}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : activeTab === 'WEBSOCKET' ? (
+              <View style={styles.filterRow}>
+                {(['ALL', 'OPEN', 'MSG', 'CLOSE', 'ERR'] as const).map((s) => {
+                  const pillLabel = s === 'ALL' ? t.allFilter : s === 'OPEN' ? 'Open' : s === 'MSG' ? 'Message' : s === 'CLOSE' ? 'Close' : 'Error';
+                  return (
+                    <TouchableOpacity
+                      key={s}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: filterStatus === s }}
+                      accessibilityLabel={pillLabel}
+                      style={[styles.filterPill, filterStatus === s && styles.filterPillActive]}
+                      onPress={() => setFilterStatus(s)}
+                    >
+                      <Text style={[styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]}>
+                        {pillLabel}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : activeTab === 'NOTIFICATIONS' ? (
+              <View style={styles.filterRow}>
+                {(['ALL', 'REMOTE', 'LOCAL'] as const).map((s) => {
+                  const pillLabel = s === 'ALL' ? t.allFilter : s === 'REMOTE' ? 'Remote' : 'Local';
+                  return (
+                    <TouchableOpacity
+                      key={s}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: filterStatus === s }}
+                      accessibilityLabel={pillLabel}
+                      style={[styles.filterPill, filterStatus === s && styles.filterPillActive]}
+                      onPress={() => setFilterStatus(s)}
+                    >
+                      <Text style={[styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]}>
+                        {pillLabel}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : activeTab === 'NAVFLOW' ? (
+              <View style={styles.filterRow}>
+                {(['ALL', 'PUSH', 'POP', 'REPLACE', 'NAVIGATE'] as const).map((s) => {
+                  const pillLabel = s === 'ALL' ? t.allFilter : s;
+                  return (
+                    <TouchableOpacity
+                      key={s}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: filterStatus === s }}
+                      accessibilityLabel={pillLabel}
+                      style={[styles.filterPill, filterStatus === s && styles.filterPillActive]}
+                      onPress={() => setFilterStatus(s)}
+                    >
+                      <Text style={[styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]}>
+                        {pillLabel}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            {/* Advanced Search toggle - Network tab only */}
+            {activeTab === 'NETWORK' ? (
+              <>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Toggle advanced search"
+                  onPress={() => setShowAdvancedSearch(!showAdvancedSearch)}
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4 }}
+                >
+                  <Text style={{ color: C.primary, fontSize: 10, fontWeight: '700', letterSpacing: 0.5 }}>
+                    {showAdvancedSearch ? t.advancedSearchHide : t.advancedSearch}
+                  </Text>
+                </TouchableOpacity>
+
+                {showAdvancedSearch ? (
+              <View style={{ paddingHorizontal: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: C.border }}>
+                {/* Method filter chips */}
+                <Text style={{ color: C.textDim, fontSize: 9, fontWeight: '700', letterSpacing: 0.5, marginBottom: 4 }}>{t.methodFilter}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                  {['ALL', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map((method) => (
+                    <TouchableOpacity
+                      key={method}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: filterMethod === method }}
+                      onPress={() => setFilterMethod(method)}
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 6,
+                        backgroundColor: filterMethod === method ? C.primary : C.surfaceLight,
+                        borderWidth: 1,
+                        borderColor: filterMethod === method ? C.primary : C.border,
+                      }}
+                    >
+                      <Text style={{ color: filterMethod === method ? '#FFF' : C.text, fontSize: 9, fontWeight: '700' }}>
+                        {method === 'ALL' ? t.allMethods : method}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Time range chips */}
+                <Text style={{ color: C.textDim, fontSize: 9, fontWeight: '700', letterSpacing: 0.5, marginBottom: 4 }}>{t.timeFilter}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                  {[
+                    { label: t.timeCustom, value: null as number | null },
+                    { label: t.time5min, value: 5 },
+                    { label: t.time15min, value: 15 },
+                    { label: t.time1hour, value: 60 },
+                  ].map((opt) => (
+                    <TouchableOpacity
+                      key={opt.label}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: timeRangeMinutes === opt.value }}
+                      onPress={() => setTimeRangeMinutes(opt.value)}
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 6,
+                        backgroundColor: timeRangeMinutes === opt.value ? C.primary : C.surfaceLight,
+                        borderWidth: 1,
+                        borderColor: timeRangeMinutes === opt.value ? C.primary : C.border,
+                      }}
+                    >
+                      <Text style={{ color: timeRangeMinutes === opt.value ? '#FFF' : C.text, fontSize: 9, fontWeight: '700' }}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Domain selector */}
+                <Text style={{ color: C.textDim, fontSize: 9, fontWeight: '700', letterSpacing: 0.5, marginBottom: 4 }}>{t.domainFilter}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                  <TouchableOpacity
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selectedDomain === null }}
+                    onPress={() => setSelectedDomain(null)}
+                    style={{
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 6,
+                      backgroundColor: selectedDomain === null ? C.primary : C.surfaceLight,
+                      borderWidth: 1,
+                      borderColor: selectedDomain === null ? C.primary : C.border,
+                    }}
+                  >
+                    <Text style={{ color: selectedDomain === null ? '#FFF' : C.text, fontSize: 9, fontWeight: '700' }}>
+                      {t.domainAny}
+                    </Text>
+                  </TouchableOpacity>
+                  {logs
+                    .filter((l: LogEntry) => l.url && l.type !== 'websocket' && l.type !== 'performance' && l.type !== 'action' && l.type !== 'info')
+                    .map((l: LogEntry) => extractDomain(l.url!))
+                    .filter((d: string, i: number, arr: string[]) => arr.indexOf(d) === i)
+                    .slice(0, 10)
+                    .map((domain: string) => (
+                      <TouchableOpacity
+                        key={domain}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: selectedDomain === domain }}
+                        onPress={() => setSelectedDomain(domain === selectedDomain ? null : domain)}
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 6,
+                          backgroundColor: selectedDomain === domain ? C.primary : C.surfaceLight,
+                          borderWidth: 1,
+                          borderColor: selectedDomain === domain ? C.primary : C.border,
+                        }}
+                      >
+                        <Text style={{ color: selectedDomain === domain ? '#FFF' : C.text, fontSize: 9, fontWeight: '700' }} numberOfLines={1}>
+                          {domain.length > 20 ? domain.slice(0, 18) + '…' : domain}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                </View>
+
+                {/* Regex toggle */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <TouchableOpacity
+                      accessibilityRole="switch"
+                      accessibilityState={{ checked: regexMode }}
+                      onPress={() => setRegexMode(!regexMode)}
+                      style={{
+                        width: 36,
+                        height: 20,
+                        borderRadius: 10,
+                        backgroundColor: regexMode ? C.primary : C.border,
+                        justifyContent: 'center',
+                        paddingHorizontal: 2,
+                      }}
+                    >
+                      <View style={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: 8,
+                        backgroundColor: '#FFF',
+                        alignSelf: regexMode ? 'flex-end' : 'flex-start',
+                      }} />
+                    </TouchableOpacity>
+                    <Text style={{ color: C.text, fontSize: 10, fontWeight: '700', letterSpacing: 0.5 }}>{t.regexToggle}</Text>
+                  </View>
+
+                  {/* Presets */}
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={t.savePreset}
+                      onPress={() => {
+                        const name = `Preset ${searchPresets.length + 1}`;
+                        setSearchPresets([...searchPresets, { name, query: searchQuery, method: filterMethod, status: filterStatus, domain: selectedDomain, time: timeRangeMinutes, regex: regexMode }]);
+                      }}
+                      style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40' }}
+                    >
+                      <Text style={{ color: C.primary, fontSize: 9, fontWeight: '700' }}>{t.savePreset}</Text>
+                    </TouchableOpacity>
+                    {searchPresets.length > 0 ? (
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={t.loadPreset}
+                        onPress={() => {
+                          const names = searchPresets.map(p => p.name);
+                          Alert.alert(t.presets, t.savedPresets, [
+                            ...searchPresets.map((p, i) => ({
+                              text: p.name,
+                              onPress: () => {
+                                setSearchQuery(p.query);
+                                setFilterMethod(p.method);
+                                setFilterStatus(p.status);
+                                setSelectedDomain(p.domain);
+                                setTimeRangeMinutes(p.time);
+                                setRegexMode(p.regex);
+                              },
+                            })),
+                            { text: t.cancel, style: 'cancel' as const },
+                          ]);
+                        }}
+                        style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40' }}
+                      >
+                        <Text style={{ color: C.primary, fontSize: 9, fontWeight: '700' }}>{t.loadPreset}</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                </View>
+              </View>
+            ) : null}
+              </>
             ) : null}
           </View>
         ) : null}
+
+        {compareIds.length > 0 && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 6, backgroundColor: C.primary + '18', borderBottomWidth: 1, borderBottomColor: C.border }}>
+            <Text style={{ color: C.primary, fontSize: 11, fontWeight: '700' }}>
+              {t.compare}: {compareIds.length}/2 selected
+            </Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Clear compare selection"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={() => setCompareIds([])}
+            >
+              <Text style={{ color: C.error, fontSize: 12, fontWeight: '700' }}>{t.close}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {activeTab === 'SETTINGS' ? (
           <SettingsPanel
@@ -811,6 +1240,14 @@ export const DebugMonitor = ({
             t={t}
             onTogglePerf={setPerfRunning}
           />
+        ) : activeTab === 'MEMORY' ? (
+          <MemoryPanel
+            memStats={memStats}
+            memRunning={memRunning}
+            C={C}
+            t={t}
+            onToggleMem={setMemRunning}
+          />
         ) : activeTab === 'WEBSOCKET' ? (
           <WebSocketPanel logs={logs} C={C} t={t} />
         ) : activeTab === 'STORE' ? (
@@ -824,6 +1261,10 @@ export const DebugMonitor = ({
               setDetailTab('RESPONSE');
             }}
           />
+        ) : activeTab === 'NOTIFICATIONS' ? (
+          <NotificationPanel C={C} t={t} />
+        ) : activeTab === 'NAVFLOW' ? (
+          <NavigationFlowPanel C={C} t={t} />
         ) : activeTab === 'NETWORK' && showWaterfall ? (
           <TimelinePanel
             logs={filteredLogs}
@@ -885,7 +1326,16 @@ export const DebugMonitor = ({
               selectedLog?.type === 'info' && selectedLog?.message?.startsWith('[ERROR]');
             return (
               <View style={[styles.detailOverlay, { paddingTop: top, paddingBottom: bottom }]}>
-                <View style={styles.detailSheet}>
+                <Animated.View
+                  style={[
+                    styles.detailSheet,
+                    {
+                      transform: [{ translateY: detailTranslateY }],
+                      opacity: detailOpacity,
+                    },
+                  ]}
+                  {...detailPanResponder.panHandlers}
+                >
                   <View style={styles.detailHandle} />
                   <View style={styles.detailHeader}>
                     <TouchableOpacity
@@ -970,6 +1420,50 @@ export const DebugMonitor = ({
                           <Text style={styles.detailDropdownText}>{t.replayRequest}</Text>
                         </TouchableOpacity>
                       )}
+                      <TouchableOpacity
+                        accessibilityRole="menuitem"
+                        style={styles.detailDropdownItem}
+                        onPress={() => {
+                          if (selectedLog) {
+                            const next = new Set(bookmarkedIds);
+                            if (next.has(selectedLog.id)) {
+                              next.delete(selectedLog.id);
+                            } else {
+                              next.add(selectedLog.id);
+                            }
+                            setBookmarkedIds(next);
+                          }
+                          setShowMenu(false);
+                        }}
+                      >
+                        <Text style={styles.detailDropdownText}>
+                          {selectedLog && bookmarkedIds.has(selectedLog.id) ? '★ ' + t.bookmark : '☆ ' + t.bookmark}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        accessibilityRole="menuitem"
+                        style={styles.detailDropdownItem}
+                        onPress={() => {
+                          if (selectedLog) {
+                            if (compareIds.includes(selectedLog.id)) {
+                              setCompareIds(compareIds.filter((id) => id !== selectedLog.id));
+                            } else if (compareIds.length === 0) {
+                              setCompareIds([selectedLog.id]);
+                            } else if (compareIds.length === 1) {
+                              setCompareIds([compareIds[0]!, selectedLog.id!]);
+                              setShowCompareModal(true);
+                            } else {
+                              setCompareIds([selectedLog.id]);
+                            }
+                          }
+                          setSelectedLog(null);
+                          setShowMenu(false);
+                        }}
+                      >
+                        <Text style={[styles.detailDropdownText, compareIds.includes(selectedLog?.id || '') ? { color: C.primary } : undefined]}>
+                          {t.selectForCompare}
+                        </Text>
+                      </TouchableOpacity>
                       {customActions?.map((action, i) => (
                         <TouchableOpacity
                           key={`ca-${i}`}
@@ -1140,8 +1634,156 @@ export const DebugMonitor = ({
                   )}
                   <View style={{ height: 100 }} />
                 </ScrollView>
-              </View>
+              </Animated.View>
             </View>
+            );
+          })()}
+        </Modal>
+
+        {/* Comparison Modal */}
+        <Modal
+          visible={showCompareModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => { setShowCompareModal(false); setCompareIds([]); }}
+        >
+          {(() => {
+            const logA = logs.find((l: LogEntry) => l.id === compareIds[0]);
+            const logB = logs.find((l: LogEntry) => l.id === compareIds[1]);
+            if (!logA || !logB) {
+              return (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.background }}>
+                  <Text style={{ color: C.textDim, fontSize: 14 }}>{t.noDiff}</Text>
+                </View>
+              );
+            }
+
+            interface CompareField {
+              label: string;
+              valueA: string;
+              valueB: string;
+              diff: boolean;
+            }
+
+            const statusA = logA.status?.toString() || '-';
+            const statusB = logB.status?.toString() || '-';
+            const durationA = logA.durationMs ? `${logA.durationMs}ms` : '-';
+            const durationB = logB.durationMs ? `${logB.durationMs}ms` : '-';
+
+            const fields: CompareField[] = [
+              { label: 'Method', valueA: logA.method || '-', valueB: logB.method || '-', diff: (logA.method || '') !== (logB.method || '') },
+              { label: 'URL', valueA: logA.url || '-', valueB: logB.url || '-', diff: (logA.url || '') !== (logB.url || '') },
+              { label: 'Status', valueA: statusA, valueB: statusB, diff: statusA !== statusB },
+              { label: 'Duration', valueA: durationA, valueB: durationB, diff: durationA !== durationB },
+            ];
+
+            const hasDiff = fields.some((f) => f.diff);
+
+            const CompareRow = ({ field }: { field: CompareField }) => (
+              <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+                <Text style={{ width: 72, color: C.textDim, fontSize: 10, fontWeight: '700', letterSpacing: 0.5 }}>{field.label}</Text>
+                <View style={{ flex: 1, paddingRight: 6 }}>
+                  <View style={[styles.sectionBox, field.diff ? { borderColor: C.warning, borderWidth: 1 } : undefined]}>
+                    <Text selectable style={[styles.sectionValue, field.diff ? { color: C.warning } : undefined]} numberOfLines={4}>
+                      {field.valueA || '-'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ flex: 1, paddingLeft: 6 }}>
+                  <View style={[styles.sectionBox, field.diff ? { borderColor: C.warning, borderWidth: 1 } : undefined]}>
+                    <Text selectable style={[styles.sectionValue, field.diff ? { color: C.warning } : undefined]} numberOfLines={4}>
+                      {field.valueB || '-'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            );
+
+            return (
+              <View style={{ flex: 1, backgroundColor: C.background }}>
+                {/* Header */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.border }}>
+                  <Text style={{ color: C.text, fontSize: 16, fontWeight: '700' }}>{t.comparisonTitle}</Text>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={t.close}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={() => { setShowCompareModal(false); setCompareIds([]); }}
+                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: C.surfaceLight }}
+                  >
+                    <Text style={{ color: C.primary, fontSize: 13, fontWeight: '700' }}>{t.close}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={{ flex: 1, padding: 16 }} showsVerticalScrollIndicator={false}>
+                  {/* Diff indicator */}
+                  {!hasDiff ? (
+                    <View style={{ alignItems: 'center', paddingVertical: 12, marginBottom: 12 }}>
+                      <Text style={{ color: C.success, fontSize: 13, fontWeight: '700' }}>{t.noDiff}</Text>
+                    </View>
+                  ) : (
+                    <View style={{ alignItems: 'center', paddingVertical: 12, marginBottom: 12 }}>
+                      <Text style={{ color: C.warning, fontSize: 11, fontWeight: '600' }}>Differences highlighted in {C.warning}</Text>
+                    </View>
+                  )}
+
+                  {/* Column headers */}
+                  <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                    <View style={{ width: 72 }} />
+                    <View style={{ flex: 1, alignItems: 'center', paddingRight: 6 }}>
+                      <Text style={{ color: C.primary, fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>REQUEST A</Text>
+                    </View>
+                    <View style={{ flex: 1, alignItems: 'center', paddingLeft: 6 }}>
+                      <Text style={{ color: C.primary, fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>REQUEST B</Text>
+                    </View>
+                  </View>
+
+                  {/* Fields */}
+                  {fields.map((field) => (
+                    <CompareRow key={field.label} field={field} />
+                  ))}
+
+                  {/* Headers section */}
+                  <Text style={{ color: C.textDim, fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginTop: 8, marginBottom: 8 }}>{t.headers?.toUpperCase?.() || 'HEADERS'}</Text>
+                  <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+                    <View style={{ flex: 1, paddingRight: 6 }}>
+                      <View style={[styles.sectionBox]}>
+                        <Text selectable style={styles.sectionValue}>
+                          {logA.requestHeaders ? JSON.stringify(logA.requestHeaders, null, 2) : '-'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={{ flex: 1, paddingLeft: 6 }}>
+                      <View style={[styles.sectionBox]}>
+                        <Text selectable style={styles.sectionValue}>
+                          {logB.requestHeaders ? JSON.stringify(logB.requestHeaders, null, 2) : '-'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Body section */}
+                  <Text style={{ color: C.textDim, fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginTop: 8, marginBottom: 8 }}>{t.body?.toUpperCase?.() || 'BODY'}</Text>
+                  <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+                    <View style={{ flex: 1, paddingRight: 6 }}>
+                      <View style={[styles.sectionBox]}>
+                        <Text selectable style={styles.sectionValue}>
+                          {logA.requestData ? JSON.stringify(logA.requestData, null, 2) : '-'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={{ flex: 1, paddingLeft: 6 }}>
+                      <View style={[styles.sectionBox]}>
+                        <Text selectable style={styles.sectionValue}>
+                          {logB.requestData ? JSON.stringify(logB.requestData, null, 2) : '-'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={{ height: 40 }} />
+                </ScrollView>
+              </View>
             );
           })()}
         </Modal>

@@ -1,5 +1,5 @@
 {
-  "private": true,
+  "private": false,
   "name": "network-monitor-monorepo",
   "workspaces": [
     "packages/network-monitor",

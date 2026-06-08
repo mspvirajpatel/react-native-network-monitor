@@ -1,251 +1,322 @@
 # React Native Network Monitor
 
-A polished in-app debug monitor for React Native apps.
+<div align="center">
 
-Use it to capture network traffic, console logs, WebSocket messages, FPS performance, errors, and more — all without leaving your app.
+![React Native Network Monitor Banner](screenshots/banner.svg)
 
-<p align="center">
-  <img src="./screenshots/debug-monitor.png" width="280" alt="Debug Monitor" />
-  <img src="./screenshots/network-detail.png" width="280" alt="Network Detail" />
-  <img src="./screenshots/floating-button.png" width="280" alt="Floating Button" />
-  <img src="./screenshots/api-base-url-change.png" width="280" alt="API Base URL Change" />
-</p>
-
-[![npm version](https://badge.fury.io/js/%40mspvirajpatel%2Freact-native-network-monitor.svg)](https://www.npmjs.com/package/@mspvirajpatel/react-native-network-monitor)
+[![npm version](https://img.shields.io/npm/v/@mspvirajpatel/react-native-network-monitor.svg)](https://www.npmjs.com/package/@mspvirajpatel/react-native-network-monitor)
+[![npm downloads](https://img.shields.io/npm/dm/@mspvirajpatel/react-native-network-monitor.svg)](https://www.npmjs.com/package/@mspvirajpatel/react-native-network-monitor)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%23007ACC.svg)](https://www.typescriptlang.org/)
-[![GitHub Actions](https://github.com/mspvirajpatel/react-native-network-monitor/actions/workflows/release.yml/badge.svg)](https://github.com/mspvirajpatel/react-native-network-monitor/actions/workflows/release.yml)
-[![npm downloads](https://img.shields.io/npm/dm/%40mspvirajpatel/react-native-network-monitor.svg)](https://www.npmjs.com/package/@mspvirajpatel/react-native-network-monitor)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+[![React Native](https://img.shields.io/badge/React%20Native-0.70+-61DAFB.svg)](https://reactnative.dev/)
 
-## Why this package
+**Professional Debug Overlay for React Native Apps**
 
-- Capture `fetch` + `XMLHttpRequest` + `WebSocket` traffic automatically
-- Visualize request/response details in-app
-- See `console.log`, `console.warn`, and `console.error` output
-- Monitor real-time FPS performance with history chart
-- Catch React render errors and unhandled promise rejections
-- Protect access with a password trigger
-- Switch API endpoints in seconds
-- Export logs to JSON or text reports, save to device filesystem
-- Persist logs across app restarts
-- Open the debugger programmatically from anywhere in your app
+🚀 [Demo](#demo) • 📦 [Installation](#installation) • 📖 [Documentation](#documentation) • 🤝 [Contributing](#contributing)
 
-## Features
-
-- 🔍 Network interception for `fetch`, XHR, and WebSocket
-- 📝 Console log capture
-- 🔐 Password-protected access with optional skip
-- 🌐 Environment / base URL switching
-- 📊 Rich debug UI with search and filters
-- 🌗 Light/dark theme support
-- 📤 Export logs as JSON or formatted text report
-- 💾 Save reports to device filesystem (expo-file-system / react-native-fs)
-- 🧠 Log persistence across app restarts
-- 🔌 WebSocket monitoring (open/close/message/error)
-- ⚡ FPS performance monitor with live stats and history chart
-- 🛡️ Error Boundary + global JS error / promise rejection capture
-- 📱 Device info panel (platform, OS, model, screen, app version)
-- 🚀 Programmatic open/close via `useDebugger()` hook
-- 🧩 Custom storage adapter support
-- 🌍 Multilanguage UI with English, Russian, Turkish, Azerbaijani
-- 🔘 Draggable floating DEBUG button with auto-hide
-- 📐 Safe area aware — respects device notch, rounded corners, home indicator
-- ↔️ Configurable screen edge margin for floating button
+</div>
 
 ---
 
-## Install
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🌐 **Network Monitoring** | Automatic interception of fetch & XMLHttpRequest with request/response details |
+| 📊 **Performance Tracking** | Real-time FPS monitoring, memory usage, and historical charts |
+| 🔌 **WebSocket Logging** | Track WebSocket connections, messages, and errors |
+| 📝 **Console Capture** | Capture console.log, warn, error, and info messages |
+| 💾 **State Tracking** | Redux & Zustand middleware for state change visualization |
+| 📲 **Push Notifications** | Log and inspect push notification payloads |
+| 🧭 **Navigation Flow** | Visualize screen transitions with timing and deep links |
+| 🔍 **Advanced Filtering** | Filter by method, status, domain, time range, and regex |
+| 📤 **Export Capabilities** | JSON, text reports, and HAR file export |
+| 🔐 **Security** | Password protection, tap-count authentication, and shake gestures |
+| 🌍 **i18n** | 13 languages with RTL support |
+| 🎨 **Theming** | Dark/Light modes with custom color support |
+
+---
+
+## 📦 Installation
 
 ```bash
-npm install @mspvirajpatel/react-native-network-monitor react-native-safe-area-context
-```
-
-```bash
-yarn add @mspvirajpatel/react-native-network-monitor react-native-safe-area-context
-```
-
-Optional export dependencies:
-
-```bash
-npm install expo-file-system expo-sharing
+npm install @mspvirajpatel/react-native-network-monitor
 # or
-npm install react-native-fs
+yarn add @mspvirajpatel/react-native-network-monitor
 ```
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-Wrap your app with `DebugTrigger`:
+### 1. Wrap Your App
 
-```tsx
-import React from 'react';
+```jsx
 import { DebugTrigger } from '@mspvirajpatel/react-native-network-monitor';
 
 export default function App() {
   return (
-    <DebugTrigger
-      password="2026"
-      passwordFrequency="all-time"
-      clicksNeeded={5}
-      prodUrl="https://api.production.com"
-      testUrl="https://api.staging.com"
-    >
-      {/* Your app content */}
+    <DebugTrigger password="2026">
+      <YourApp />
     </DebugTrigger>
   );
 }
 ```
 
-Tap the screen 5 times, enter the password, and the debug monitor opens.
+### 2. Open the Debugger
+
+- **Tap** the floating DEBUG button 5 times
+- **Enter** password (default: `2026`)
+- **Done!** 🎉
 
 ---
 
-## Primary API
+## 📱 Demo
 
-### `DebugTrigger`
+<div align="center">
 
-Use `DebugTrigger` to wrap your app and enable the debug monitor.
+![Debug Monitor Preview](screenshots/debug-monitor.png)
 
-```tsx
-import { DebugTrigger } from '@mspvirajpatel/react-native-network-monitor';
-```
+*Real-time network monitoring with advanced filtering*
 
-### `useDebugger`
-
-Use inside any component rendered within `<DebugTrigger>`.
-
-```tsx
-import { useDebugger } from '@mspvirajpatel/react-native-network-monitor';
-```
-
-### Performance helpers
-
-```tsx
-import {
-  startPerformanceMonitor,
-  stopPerformanceMonitor,
-  subscribeToFps,
-  isPerformanceMonitorRunning,
-} from '@mspvirajpatel/react-native-network-monitor';
-```
+</div>
 
 ---
 
-## Key Props
+## ⚙️ Configuration
 
-| Prop | Type | Description |
-|---|---|---|
-| `password` | `string` | Password required to open the debugger |
-| `passwordFrequency` | `'all-time' | 'per-install' | 'app-active'` | How often the password is requested |
-| `passwordOptional` | `boolean` | Skip the password modal while keeping a password configured |
-| `enableTapGesture` | `boolean` | Enable or disable the 5-tap open gesture |
-| `clicksNeeded` | `number` | Number of taps required to open the debugger |
-| `prodUrl` | `string` | Production base URL entry |
-| `testUrl` | `string` | Test base URL entry |
-| `baseUrls` | `string[]` or `{ title: string; url: string }[]` | Custom list of saved base URLs |
-| `onBaseUrlChange` | `(newUrl: string) => void` | Called when the user selects a new base URL |
-| `onEnvChange` | `(newEnv: 'demo' | 'prod') => void` | Called when demo/prod mode changes |
-| `enabled` | `boolean` | Enable or disable the monitor |
-| `isDemo` | `boolean` | Enable demo mode |
-| `floatingButtonMargin` | `number` | Extra screen edge padding for the floating button |
-| `checkAccess` | `() => boolean | Promise<boolean>` | Custom guard for opening the debugger |
-| `language` | `'az' | 'en' | 'ru' | 'tr' | 'auto'` | UI language selection |
-| `theme` | `'light' | 'dark' | 'auto'` | Force light/dark mode or follow system |
+### Basic Props
 
----
-
-## Examples
-
-### Environment Switching
-
-```tsx
+```jsx
 <DebugTrigger
-  prodUrl="https://api.production.com"
-  testUrl="https://api.qa.com"
-  baseUrls={[
-    { title: 'Local', url: 'http://localhost:3000' },
-    { title: 'QA', url: 'https://api.qa.com' },
-  ]}
-  onBaseUrlChange={(url) => console.log('Switched to', url)}
+  password="2026"           // Password for authentication
+  clicksNeeded={5}          // Taps needed to open
+  enableShake={true}        // Enable shake gesture
+  theme="dark"              // 'light' | 'dark' | 'auto'
+  language="en"             // Language code
 >
-  <App />
+  <YourApp />
 </DebugTrigger>
 ```
 
-### Open Programmatically
+### Feature Flags
 
-```tsx
+```jsx
+<DebugTrigger
+  features={{
+    network: true,          // Network monitoring
+    console: true,          // Console capture
+    websocket: true,        // WebSocket logging
+    performance: true,      // FPS tracking
+    memory: true,           // Memory monitoring
+    notifications: true,    // Push notification logging
+    navigationFlow: true,   // Navigation tracking
+    errorBoundary: true,    // Error boundary
+    persistence: true,      // Log persistence
+  }}
+>
+  <YourApp />
+</DebugTrigger>
+```
+
+### Custom Theme
+
+```jsx
+<DebugTrigger
+  theme="dark"
+  colors={{
+    primary: '#38BDF8',
+    secondary: '#22C55E',
+    success: '#10B981',
+    accent: '#8B5CF6',
+  }}
+>
+  <YourApp />
+</DebugTrigger>
+```
+
+---
+
+## 🔧 Advanced Usage
+
+### Programmatic Control
+
+```jsx
 import { useDebugger } from '@mspvirajpatel/react-native-network-monitor';
 
-function Settings() {
+function MyComponent() {
   const { openDebugger, closeDebugger, isDebuggerOpen } = useDebugger();
-
+  
   return (
-    <View>
-      <Button title="Open Debugger" onPress={openDebugger} />
-      <Text>Debugger is {isDebuggerOpen ? 'open' : 'closed'}</Text>
-    </View>
+    <Button 
+      title="Open Debug" 
+      onPress={openDebugger} 
+    />
   );
 }
 ```
 
-### Optional Quick Access
+### State Tracking (Redux)
 
-```tsx
-<DebugTrigger
-  password="2026"
-  passwordOptional
-  enableTapGesture={true}
->
-  <App />
-</DebugTrigger>
+```jsx
+import { createReduxMiddleware } from '@mspvirajpatel/react-native-network-monitor';
+
+const store = createStore(rootReducer, applyMiddleware(
+  createReduxMiddleware({ storeName: 'MyStore' })
+));
 ```
 
-### Disable Tap Gesture
+### State Tracking (Zustand)
 
-```tsx
-<DebugTrigger
-  password="2026"
-  enableTapGesture={false}
->
-  <App />
-</DebugTrigger>
+```jsx
+import { createZustandMonitor } from '@mspvirajpatel/react-native-network-monitor';
+
+const useStore = create(
+  createZustandMonitor(
+    (set) => ({ count: 0, increment: () => set((state) => ({ count: state.count + 1 })) }),
+    { storeName: 'Counter' }
+  )
+);
 ```
 
-The debugger remains available through `useDebugger()` only.
+### Manual Notification Logging
 
----
+```jsx
+import { logNotification } from '@mspvirajpatel/react-native-network-monitor';
 
-## FPS Monitor
+// In your notification handler
+logNotification({
+  title: 'New Message',
+  body: 'You have a new message',
+  data: { screen: 'Chat', id: 123 },
+  source: 'remote',
+});
+```
 
-```tsx
-import {
-  startPerformanceMonitor,
-  stopPerformanceMonitor,
-  subscribeToFps,
-  isPerformanceMonitorRunning,
-} from '@mspvirajpatel/react-native-network-monitor';
+### Navigation Tracking
 
-startPerformanceMonitor();
-stopPerformanceMonitor();
-const running = isPerformanceMonitorRunning();
+```jsx
+import { logNavigationEvent } from '@mspvirajpatel/react-native-network-monitor';
 
-subscribeToFps((stats) => {
-  console.log(stats);
+// In your navigation listener
+logNavigationEvent({
+  screen: 'Profile',
+  method: 'push',
+  params: { userId: 123 },
+  deepLink: 'myapp://profile/123',
 });
 ```
 
 ---
 
-## Notes
+## 📊 Tabs Overview
 
-- Requires `react-native-safe-area-context`
-- Supports React Native `>=0.60.0`
-- Works with Expo when optional export dependencies are installed
+| Tab | Description |
+|-----|-------------|
+| **All** | Combined view of all logs |
+| **Network** | HTTP requests and responses |
+| **Console** | Console.log, warn, error messages |
+| **WS** | WebSocket events |
+| **FPS** | Performance monitoring |
+| **Memory** | Heap usage tracking |
+| **Store** | State changes (Redux/Zustand) |
+| **Notifs** | Push notification logs |
+| **Flow** | Navigation flow visualization |
+| **Settings** | Configuration and export |
 
 ---
 
-## License
+## 🛠️ Development
 
-MIT
+```bash
+# Clone the repository
+git clone https://github.com/mspvirajpatel/react-native-network-monitor.git
+
+# Install dependencies
+cd packages/network-monitor
+npm install
+
+# Build the package
+npm run build
+
+# Type check
+npm run typescript
+
+# Lint
+npm run lint
+```
+
+---
+
+## 📝 Export Features
+
+### JSON Report
+```jsx
+import { generateExportReport } from '@mspvirajpatel/react-native-network-monitor';
+
+const report = generateExportReport();
+```
+
+### HAR Export
+```jsx
+import { saveReportToFile } from '@mspvirajpatel/react-native-network-monitor';
+
+await saveReportToFile('network.har');
+```
+
+### Share Report
+```jsx
+import { formatReportAsText } from '@mspvirajpatel/react-native-network-monitor';
+
+const text = formatReportAsText();
+await Share.share({ message: text });
+```
+
+---
+
+## 🌍 Supported Languages
+
+English, Spanish, French, German, Portuguese, Italian, Japanese, Korean, Chinese (Simplified), Chinese (Traditional), Arabic, Russian, Turkish, Hindi, Gujarati, Azerbaijani
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) before submitting a PR.
+
+### Development Setup
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Support
+
+If this project helps you, please consider giving it a ⭐ on GitHub!
+
+[![GitHub stars](https://img.shields.io/github/stars/mspvirajpatel/react-native-network-monitor?style=social)](https://github.com/mspvirajpatel/react-native-network-monitor)
+
+---
+
+## 📞 Contact
+
+- **Author:** Viraj Patel
+- **GitHub:** [mspvirajpatel](https://github.com/mspvirajpatel)
+
+---
+
+<div align="center">
+
+**Made with ❤️ for the React Native community**
+
+</div>

@@ -21,6 +21,12 @@ export { saveReportToFile, saveReportToJson, saveReportToText } from './FileExpo
 // Persistence
 export { startPersistence, stopPersistence, restoreLogs, clearPersistedLogs } from './PersistenceManager';
 
+// Notification Monitor
+export { setupNotificationMonitor, destroyNotificationMonitor, logNotification, getNotificationHistory, clearNotificationHistory, subscribeToNotifications, isNotificationMonitorPatched } from './NotificationMonitor';
+
+// Navigation Tracker
+export { setupNavigationTracker, destroyNavigationTracker, logNavigationEvent, getNavigationEvents, clearNavigationEvents, subscribeToNavigation, isNavigationTrackerActive, getNavigationFlow, getScreenStats } from './NavigationTracker';
+
 // Logger (singleton)
 export { Logger } from './Logger';
 

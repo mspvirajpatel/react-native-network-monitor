@@ -10,6 +10,7 @@ var _reactNativeSafeAreaContext = require("react-native-safe-area-context");
 var _DebugMonitorStyles = _interopRequireWildcard(require("./DebugMonitorStyles"));
 var _Logger = require("./Logger");
 var _PerformanceMonitor = require("./PerformanceMonitor");
+var _MemoryMonitor = require("./MemoryMonitor");
 var _DeviceInfo = require("./DeviceInfo");
 var _NetworkMonitor = require("./NetworkMonitor");
 var _DebugContext = require("./DebugContext");
@@ -19,13 +20,14 @@ var _SettingsPanel = _interopRequireDefault(require("./panels/SettingsPanel"));
 var _StorePanel = _interopRequireDefault(require("./panels/StorePanel"));
 var _PerformancePanel = _interopRequireDefault(require("./panels/PerformancePanel"));
 var _WebSocketPanel = _interopRequireDefault(require("./panels/WebSocketPanel"));
+var _TimelinePanel = _interopRequireDefault(require("./panels/TimelinePanel"));
+var _MemoryPanel = _interopRequireDefault(require("./panels/MemoryPanel"));
+var _NotificationPanel = _interopRequireDefault(require("./panels/NotificationPanel"));
+var _NavigationFlowPanel = _interopRequireDefault(require("./panels/NavigationFlowPanel"));
 var _translations = require("./translations");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }
 function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function (e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, default: e }; if (null === e || "object" != typeof e && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (const t in e) "default" !== t && {}.hasOwnProperty.call(e, t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, t)) && (i.get || i.set) ? o(f, t, i) : f[t] = e[t]); return f; })(e, t); }
-/* eslint-disable no-unused-vars */
-/* eslint-disable react-native/no-inline-styles */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); } /* eslint-disable no-unused-vars */ /* eslint-disable react-native/no-inline-styles */ /* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Section
  *
@@ -35,6 +37,15 @@ function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r
  * @param props - { label, value, json, color, selectable }
  * @returns JSX.Element | null
  */
+/** Extract domain from a URL string */
+const extractDomain = url => {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname;
+  } catch {
+    return url;
+  }
+};
 const tryParseJson = data => {
   if (typeof data === 'string') {
     try {
@@ -143,16 +154,68 @@ const DebugMonitor = ({
   const [filterStatus, setFilterStatus] = (0, _react.useState)('ALL');
   const [baseUrl, setBaseUrl] = (0, _react.useState)(_Logger.Logger.getBaseUrl());
   const [manualUrl, setManualUrl] = (0, _react.useState)('');
-  const [filterMethod] = (0, _react.useState)('ALL');
+  const [filterMethod, setFilterMethod] = (0, _react.useState)('ALL');
+  const [showAdvancedSearch, setShowAdvancedSearch] = (0, _react.useState)(false);
+  const [selectedDomain, setSelectedDomain] = (0, _react.useState)(null);
+  const [timeRangeMinutes, setTimeRangeMinutes] = (0, _react.useState)(null);
+  const [regexMode, setRegexMode] = (0, _react.useState)(false);
   const [fpsStats, setFpsStats] = (0, _react.useState)(null);
   const [refreshing, setRefreshing] = (0, _react.useState)(false);
   const [showScrollTop, setShowScrollTop] = (0, _react.useState)(false);
+  const [showWaterfall, setShowWaterfall] = (0, _react.useState)(false);
+  const [bookmarkedIds, setBookmarkedIds] = (0, _react.useState)(new Set());
+  const [searchPresets, setSearchPresets] = (0, _react.useState)([]);
+  const [compareIds, setCompareIds] = (0, _react.useState)([]);
+  const [showCompareModal, setShowCompareModal] = (0, _react.useState)(false);
   const flatListRef = (0, _react.useRef)(null);
+  const [memStats, setMemStats] = (0, _react.useState)(null);
   const [perfRunning, setPerfRunning] = (0, _react.useState)((0, _PerformanceMonitor.isPerformanceMonitorRunning)());
+  const [memRunning, setMemRunning] = (0, _react.useState)((0, _MemoryMonitor.isMemoryMonitorRunning)());
   const [deviceInfo] = (0, _react.useState)((0, _DeviceInfo.getDeviceInfo)());
   const [loading, setLoading] = (0, _react.useState)('Initializing...');
   const [receiving, setReceiving] = (0, _react.useState)(false);
   const receivingTimer = (0, _react.useRef)(null);
+
+  // Swipe-to-dismiss animation
+  const detailTranslateY = (0, _react.useRef)(new _reactNative.Animated.Value(0)).current;
+  const detailOpacity = (0, _react.useRef)(new _reactNative.Animated.Value(1)).current;
+  const detailPanResponder = (0, _react.useRef)(_reactNative.PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gestureState) => {
+      return gestureState.dy > 10 && Math.abs(gestureState.dx) < Math.abs(gestureState.dy);
+    },
+    onPanResponderMove: (_, gestureState) => {
+      if (gestureState.dy > 0) {
+        detailTranslateY.setValue(gestureState.dy);
+        detailOpacity.setValue(Math.max(0, 1 - gestureState.dy / 300));
+      }
+    },
+    onPanResponderRelease: (_, gestureState) => {
+      if (gestureState.dy > 120 || gestureState.vy > 0.5) {
+        _reactNative.Animated.parallel([_reactNative.Animated.timing(detailTranslateY, {
+          toValue: 500,
+          duration: 200,
+          useNativeDriver: true
+        }), _reactNative.Animated.timing(detailOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true
+        })]).start(() => {
+          setSelectedLog(null);
+          setShowMenu(false);
+          detailTranslateY.setValue(0);
+          detailOpacity.setValue(1);
+        });
+      } else {
+        _reactNative.Animated.parallel([_reactNative.Animated.spring(detailTranslateY, {
+          toValue: 0,
+          useNativeDriver: true
+        }), _reactNative.Animated.spring(detailOpacity, {
+          toValue: 1,
+          useNativeDriver: true
+        })]).start();
+      }
+    }
+  })).current;
 
   // Dismiss the initial loading state once the first render settles
   (0, _react.useEffect)(() => {
@@ -182,19 +245,25 @@ const DebugMonitor = ({
   }), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
     style: styles.loadingText
   }, loading))) : null;
-  const allTabs = ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'STORE', 'SETTINGS'];
+  const allTabs = ['ALL', 'NETWORK', 'LOGS', 'WEBSOCKET', 'PERFORMANCE', 'MEMORY', 'STORE', 'SETTINGS', 'NOTIFICATIONS', 'NAVFLOW'];
   const features = {
     network: true,
     console: true,
     websocket: true,
     performance: true,
+    memory: true,
+    notifications: true,
+    navigationFlow: true,
     ...featuresProp
   };
   const tabFeatureMap = {
     NETWORK: 'network',
     LOGS: 'console',
     WEBSOCKET: 'websocket',
-    PERFORMANCE: 'performance'
+    PERFORMANCE: 'performance',
+    MEMORY: 'memory',
+    NOTIFICATIONS: 'notifications',
+    NAVFLOW: 'navigationFlow'
   };
   const availableTabs = allTabs.filter(tab => tabFeatureMap[tab] === undefined || features[tabFeatureMap[tab]]);
   (0, _react.useEffect)(() => {
@@ -209,6 +278,12 @@ const DebugMonitor = ({
       _Logger.Logger.setMaxLogs(maxLogs);
     }
   }, [maxLogs]);
+  (0, _react.useEffect)(() => {
+    const unsubscribe = (0, _MemoryMonitor.subscribeToMemory)(stats => {
+      setMemStats(stats);
+    });
+    return unsubscribe;
+  }, []);
   (0, _react.useEffect)(() => {
     const unsubscribe = _Logger.Logger.subscribe(newLogs => {
       setLogs(newLogs);
@@ -230,7 +305,13 @@ const DebugMonitor = ({
     const unsub1 = addCloseCleanup(() => {
       (0, _PerformanceMonitor.destroyPerformanceMonitor)();
     });
-    return unsub1;
+    const unsub2 = addCloseCleanup(() => {
+      (0, _MemoryMonitor.destroyMemoryMonitor)();
+    });
+    return () => {
+      unsub1();
+      unsub2();
+    };
   }, [addCloseCleanup]);
 
   // Toast system for in-app notifications
@@ -324,7 +405,10 @@ const DebugMonitor = ({
       LOGS: logs.filter(l => l.type === 'info' || l.type === 'error' && !l.url).length,
       WEBSOCKET: logs.filter(l => l.type === 'websocket').length,
       PERFORMANCE: logs.filter(l => l.type === 'performance').length,
+      MEMORY: logs.filter(l => l.type === 'performance').length,
       STORE: logs.filter(l => l.type === 'action').length,
+      NOTIFICATIONS: logs.filter(l => l.type === 'notification').length,
+      NAVFLOW: logs.filter(l => l.type === 'navigation' || l.type === 'navigationFlow').length,
       SETTINGS: 0
     };
   }, [logs]);
@@ -332,16 +416,34 @@ const DebugMonitor = ({
     const result = logs.filter(log => {
       const typeMatch = activeTab === 'ALL' ? true : activeTab === 'NETWORK' ? ['request', 'response'].includes(log.type) || log.type === 'error' && !!log.url : activeTab === 'LOGS' ? log.type === 'info' || log.type === 'error' && !log.url : activeTab === 'WEBSOCKET' ? log.type === 'websocket' : activeTab === 'PERFORMANCE' ? log.type === 'performance' : activeTab === 'STORE' ? log.type === 'action' : false;
       if (!typeMatch && activeTab !== 'SETTINGS') return false;
-      const matchesSearch = searchQuery === '' || log.url?.toLowerCase().includes(searchQuery.toLowerCase()) || log.message?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = (() => {
+        if (searchQuery === '') return true;
+        if (regexMode) {
+          try {
+            const re = new RegExp(searchQuery, 'i');
+            return log.url && re.test(log.url) || log.message && re.test(log.message);
+          } catch {
+            return true;
+          }
+        }
+        return log.url?.toLowerCase().includes(searchQuery.toLowerCase()) || log.message?.toLowerCase().includes(searchQuery.toLowerCase());
+      })();
       const matchesMethod = filterMethod === 'ALL' || log.method === filterMethod;
-      const matchesStatus = filterStatus === 'ALL' ? true : filterStatus === 'ERR' ? !!log.status && log.status >= 400 : !!log.status && log.status < 400;
-      return matchesSearch && matchesMethod && matchesStatus;
+      const matchesStatus = filterStatus === 'ALL' || filterStatus === 'BOOKMARKED' ? true : filterStatus === 'ERR' ? !!log.status && log.status >= 400 : !!log.status && log.status < 400;
+      const matchesBookmark = filterStatus !== 'BOOKMARKED' || bookmarkedIds.has(log.id);
+      const matchesDomain = selectedDomain === null || log.url && extractDomain(log.url) === selectedDomain;
+      const matchesTime = timeRangeMinutes === null || (() => {
+        const logTime = new Date(log.timestamp).getTime();
+        const cutoff = Date.now() - timeRangeMinutes * 60 * 1000;
+        return logTime >= cutoff;
+      })();
+      return matchesSearch && matchesMethod && matchesStatus && matchesBookmark && matchesDomain && matchesTime;
     });
     if (maxLogs && maxLogs > 0) {
       return result.slice(0, maxLogs);
     }
     return result;
-  }, [logs, activeTab, searchQuery, filterMethod, filterStatus, maxLogs]);
+  }, [logs, activeTab, searchQuery, filterMethod, filterStatus, maxLogs, bookmarkedIds, selectedDomain, timeRangeMinutes, regexMode]);
   const handleClearLogs = () => {
     _reactNative.Alert.alert(t.wipeAllRecords, 'Are you sure you want to delete all captured logs? This cannot be undone.', [{
       text: t.cancel,
@@ -385,6 +487,52 @@ const DebugMonitor = ({
       });
     } catch (e) {
       showError(t.couldNotShareLog);
+    } finally {
+      setLoading(null);
+    }
+  };
+  const handleReplayRequest = async log => {
+    if (!log.url) {
+      showError(t.replayRequest + ' — ' + (t.noTimelineData || 'No URL'));
+      return;
+    }
+    setLoading('Replaying request...');
+    try {
+      const method = log.method || 'GET';
+      const url = log.url;
+      const headers = {};
+
+      // Copy request headers (skip internal header names)
+      if (log.requestHeaders && typeof log.requestHeaders === 'object') {
+        const raw = log.requestHeaders;
+        Object.keys(raw).forEach(key => {
+          if (typeof raw[key] === 'string' || typeof raw[key] === 'number') {
+            headers[key] = String(raw[key]);
+          }
+        });
+      }
+
+      // Prepare body (exclude for GET/HEAD)
+      let body;
+      if (log.requestData && method !== 'GET' && method !== 'HEAD') {
+        if (typeof log.requestData === 'object') {
+          body = JSON.stringify(log.requestData);
+          // Ensure Content-Type for JSON bodies
+          if (!headers['Content-Type'] && !headers['content-type']) {
+            headers['Content-Type'] = 'application/json';
+          }
+        } else {
+          body = String(log.requestData);
+        }
+      }
+      const response = await fetch(url, {
+        method,
+        headers,
+        body
+      });
+      showSuccess(`${t.replayRequest} — ${response.status} ${response.statusText || ''}`);
+    } catch (err) {
+      showError(t.replayRequest + ' — ' + (err?.message || 'Failed'));
     } finally {
       setLoading(null);
     }
@@ -480,7 +628,31 @@ const DebugMonitor = ({
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
-    }))), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    })), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      hitSlop: {
+        top: 8,
+        bottom: 8,
+        left: 8,
+        right: 8
+      },
+      accessibilityRole: "button",
+      accessibilityLabel: bookmarkedIds.has(item.id) ? 'Remove bookmark' : 'Bookmark',
+      onPress: () => {
+        const next = new Set(bookmarkedIds);
+        if (next.has(item.id)) {
+          next.delete(item.id);
+        } else {
+          next.add(item.id);
+        }
+        setBookmarkedIds(next);
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: {
+        color: bookmarkedIds.has(item.id) ? '#FFD700' : C.textDim,
+        fontSize: 14,
+        marginLeft: 6
+      }
+    }, bookmarkedIds.has(item.id) ? '★' : '☆'))), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.logUrl,
       numberOfLines: 2
     }, item.isRedirected ? `${item.originalUrl} ➔ ${item.url}` : item.url || item.message), item.durationMs !== undefined ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
@@ -568,7 +740,7 @@ const DebugMonitor = ({
     showsHorizontalScrollIndicator: false,
     contentContainerStyle: styles.tabScroll
   }, availableTabs.map(tab => {
-    const tabLabel = tab === 'ALL' ? t.all : tab === 'NETWORK' ? t.network : tab === 'LOGS' ? t.logs : tab === 'WEBSOCKET' ? t.ws : tab === 'PERFORMANCE' ? t.fps : tab === 'STORE' ? t.store : t.settings;
+    const tabLabel = tab === 'ALL' ? t.all : tab === 'NETWORK' ? t.network : tab === 'LOGS' ? t.logs : tab === 'WEBSOCKET' ? t.ws : tab === 'PERFORMANCE' ? t.fps : tab === 'MEMORY' ? t.memory : tab === 'STORE' ? t.store : tab === 'NOTIFICATIONS' ? t.notifications || 'Notifs' : tab === 'NAVFLOW' ? t.navFlow || 'Flow' : t.settings;
     return /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
       key: tab,
       accessibilityRole: "tab",
@@ -604,8 +776,8 @@ const DebugMonitor = ({
     style: styles.clearSearch
   }, "\u2715")) : null)), activeTab === 'NETWORK' ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
     style: styles.filterRow
-  }, ['ALL', 'OK', 'ERR'].map(s => {
-    const pillLabel = s === 'ALL' ? t.allFilter : s === 'OK' ? t.success2xx3xx : t.error4xx5xx;
+  }, ['ALL', 'OK', 'ERR', 'BOOKMARKED'].map(s => {
+    const pillLabel = s === 'ALL' ? t.allFilter : s === 'OK' ? t.success2xx3xx : s === 'ERR' ? t.error4xx5xx : t.bookmarked;
     return /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
       key: s,
       accessibilityRole: "radio",
@@ -618,7 +790,386 @@ const DebugMonitor = ({
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: [styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]
     }, pillLabel));
-  })) : null) : null, activeTab === 'SETTINGS' ? /*#__PURE__*/_react.default.createElement(_SettingsPanel.default, {
+  }), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: showWaterfall ? t.list : t.waterfall,
+    style: [styles.filterPill, showWaterfall && styles.filterPillActive],
+    onPress: () => setShowWaterfall(!showWaterfall)
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: [styles.filterPillText, showWaterfall ? styles.filterPillTextActive : styles.filterPillTextInactive]
+  }, showWaterfall ? t.list : t.waterfall))) : activeTab === 'LOGS' ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: styles.filterRow
+  }, ['ALL', 'OK', 'ERR'].map(s => {
+    const pillLabel = s === 'ALL' ? t.allFilter : s === 'OK' ? t.info || 'Info' : t.error4xx5xx;
+    return /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      key: s,
+      accessibilityRole: "radio",
+      accessibilityState: {
+        checked: filterStatus === s
+      },
+      accessibilityLabel: pillLabel,
+      style: [styles.filterPill, filterStatus === s && styles.filterPillActive],
+      onPress: () => setFilterStatus(s)
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]
+    }, pillLabel));
+  })) : activeTab === 'WEBSOCKET' ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: styles.filterRow
+  }, ['ALL', 'OPEN', 'MSG', 'CLOSE', 'ERR'].map(s => {
+    const pillLabel = s === 'ALL' ? t.allFilter : s === 'OPEN' ? 'Open' : s === 'MSG' ? 'Message' : s === 'CLOSE' ? 'Close' : 'Error';
+    return /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      key: s,
+      accessibilityRole: "radio",
+      accessibilityState: {
+        checked: filterStatus === s
+      },
+      accessibilityLabel: pillLabel,
+      style: [styles.filterPill, filterStatus === s && styles.filterPillActive],
+      onPress: () => setFilterStatus(s)
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]
+    }, pillLabel));
+  })) : activeTab === 'NOTIFICATIONS' ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: styles.filterRow
+  }, ['ALL', 'REMOTE', 'LOCAL'].map(s => {
+    const pillLabel = s === 'ALL' ? t.allFilter : s === 'REMOTE' ? 'Remote' : 'Local';
+    return /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      key: s,
+      accessibilityRole: "radio",
+      accessibilityState: {
+        checked: filterStatus === s
+      },
+      accessibilityLabel: pillLabel,
+      style: [styles.filterPill, filterStatus === s && styles.filterPillActive],
+      onPress: () => setFilterStatus(s)
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]
+    }, pillLabel));
+  })) : activeTab === 'NAVFLOW' ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: styles.filterRow
+  }, ['ALL', 'PUSH', 'POP', 'REPLACE', 'NAVIGATE'].map(s => {
+    const pillLabel = s === 'ALL' ? t.allFilter : s;
+    return /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      key: s,
+      accessibilityRole: "radio",
+      accessibilityState: {
+        checked: filterStatus === s
+      },
+      accessibilityLabel: pillLabel,
+      style: [styles.filterPill, filterStatus === s && styles.filterPillActive],
+      onPress: () => setFilterStatus(s)
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.filterPillText, filterStatus === s ? styles.filterPillTextActive : styles.filterPillTextInactive]
+    }, pillLabel));
+  })) : null, activeTab === 'NETWORK' ? /*#__PURE__*/_react.default.createElement(_react.default.Fragment, null, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: "Toggle advanced search",
+    onPress: () => setShowAdvancedSearch(!showAdvancedSearch),
+    style: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 4
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: C.primary,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.5
+    }
+  }, showAdvancedSearch ? t.advancedSearchHide : t.advancedSearch)), showAdvancedSearch ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: {
+      paddingHorizontal: 10,
+      paddingBottom: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: C.textDim,
+      fontSize: 9,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      marginBottom: 4
+    }
+  }, t.methodFilter), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 4,
+      marginBottom: 8
+    }
+  }, ['ALL', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map(method => /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    key: method,
+    accessibilityRole: "radio",
+    accessibilityState: {
+      checked: filterMethod === method
+    },
+    onPress: () => setFilterMethod(method),
+    style: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      backgroundColor: filterMethod === method ? C.primary : C.surfaceLight,
+      borderWidth: 1,
+      borderColor: filterMethod === method ? C.primary : C.border
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: filterMethod === method ? '#FFF' : C.text,
+      fontSize: 9,
+      fontWeight: '700'
+    }
+  }, method === 'ALL' ? t.allMethods : method)))), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: C.textDim,
+      fontSize: 9,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      marginBottom: 4
+    }
+  }, t.timeFilter), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 4,
+      marginBottom: 8
+    }
+  }, [{
+    label: t.timeCustom,
+    value: null
+  }, {
+    label: t.time5min,
+    value: 5
+  }, {
+    label: t.time15min,
+    value: 15
+  }, {
+    label: t.time1hour,
+    value: 60
+  }].map(opt => /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    key: opt.label,
+    accessibilityRole: "radio",
+    accessibilityState: {
+      checked: timeRangeMinutes === opt.value
+    },
+    onPress: () => setTimeRangeMinutes(opt.value),
+    style: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      backgroundColor: timeRangeMinutes === opt.value ? C.primary : C.surfaceLight,
+      borderWidth: 1,
+      borderColor: timeRangeMinutes === opt.value ? C.primary : C.border
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: timeRangeMinutes === opt.value ? '#FFF' : C.text,
+      fontSize: 9,
+      fontWeight: '700'
+    }
+  }, opt.label)))), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: C.textDim,
+      fontSize: 9,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      marginBottom: 4
+    }
+  }, t.domainFilter), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 4,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityRole: "radio",
+    accessibilityState: {
+      checked: selectedDomain === null
+    },
+    onPress: () => setSelectedDomain(null),
+    style: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      backgroundColor: selectedDomain === null ? C.primary : C.surfaceLight,
+      borderWidth: 1,
+      borderColor: selectedDomain === null ? C.primary : C.border
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: selectedDomain === null ? '#FFF' : C.text,
+      fontSize: 9,
+      fontWeight: '700'
+    }
+  }, t.domainAny)), logs.filter(l => l.url && l.type !== 'websocket' && l.type !== 'performance' && l.type !== 'action' && l.type !== 'info').map(l => extractDomain(l.url)).filter((d, i, arr) => arr.indexOf(d) === i).slice(0, 10).map(domain => /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    key: domain,
+    accessibilityRole: "radio",
+    accessibilityState: {
+      checked: selectedDomain === domain
+    },
+    onPress: () => setSelectedDomain(domain === selectedDomain ? null : domain),
+    style: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      backgroundColor: selectedDomain === domain ? C.primary : C.surfaceLight,
+      borderWidth: 1,
+      borderColor: selectedDomain === domain ? C.primary : C.border
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: selectedDomain === domain ? '#FFF' : C.text,
+      fontSize: 9,
+      fontWeight: '700'
+    },
+    numberOfLines: 1
+  }, domain.length > 20 ? domain.slice(0, 18) + '…' : domain)))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 4
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityRole: "switch",
+    accessibilityState: {
+      checked: regexMode
+    },
+    onPress: () => setRegexMode(!regexMode),
+    style: {
+      width: 36,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: regexMode ? C.primary : C.border,
+      justifyContent: 'center',
+      paddingHorizontal: 2
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: '#FFF',
+      alignSelf: regexMode ? 'flex-end' : 'flex-start'
+    }
+  })), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: C.text,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.5
+    }
+  }, t.regexToggle)), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: {
+      flexDirection: 'row',
+      gap: 6
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.savePreset,
+    onPress: () => {
+      const name = `Preset ${searchPresets.length + 1}`;
+      setSearchPresets([...searchPresets, {
+        name,
+        query: searchQuery,
+        method: filterMethod,
+        status: filterStatus,
+        domain: selectedDomain,
+        time: timeRangeMinutes,
+        regex: regexMode
+      }]);
+    },
+    style: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      backgroundColor: C.primary + '20',
+      borderWidth: 1,
+      borderColor: C.primary + '40'
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: C.primary,
+      fontSize: 9,
+      fontWeight: '700'
+    }
+  }, t.savePreset)), searchPresets.length > 0 ? /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: t.loadPreset,
+    onPress: () => {
+      const names = searchPresets.map(p => p.name);
+      _reactNative.Alert.alert(t.presets, t.savedPresets, [...searchPresets.map((p, i) => ({
+        text: p.name,
+        onPress: () => {
+          setSearchQuery(p.query);
+          setFilterMethod(p.method);
+          setFilterStatus(p.status);
+          setSelectedDomain(p.domain);
+          setTimeRangeMinutes(p.time);
+          setRegexMode(p.regex);
+        }
+      })), {
+        text: t.cancel,
+        style: 'cancel'
+      }]);
+    },
+    style: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      backgroundColor: C.primary + '20',
+      borderWidth: 1,
+      borderColor: C.primary + '40'
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: C.primary,
+      fontSize: 9,
+      fontWeight: '700'
+    }
+  }, t.loadPreset)) : null))) : null) : null) : null, compareIds.length > 0 && /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    style: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      backgroundColor: C.primary + '18',
+      borderBottomWidth: 1,
+      borderBottomColor: C.border
+    }
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: C.primary,
+      fontSize: 11,
+      fontWeight: '700'
+    }
+  }, t.compare, ": ", compareIds.length, "/2 selected"), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    accessibilityRole: "button",
+    accessibilityLabel: "Clear compare selection",
+    hitSlop: {
+      top: 8,
+      bottom: 8,
+      left: 8,
+      right: 8
+    },
+    onPress: () => setCompareIds([])
+  }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+    style: {
+      color: C.error,
+      fontSize: 12,
+      fontWeight: '700'
+    }
+  }, t.close))), activeTab === 'SETTINGS' ? /*#__PURE__*/_react.default.createElement(_SettingsPanel.default, {
     baseUrls: baseUrls,
     prodUrl: prodUrl,
     testUrl: testUrl,
@@ -642,6 +1193,12 @@ const DebugMonitor = ({
     C: C,
     t: t,
     onTogglePerf: setPerfRunning
+  }) : activeTab === 'MEMORY' ? /*#__PURE__*/_react.default.createElement(_MemoryPanel.default, {
+    memStats: memStats,
+    memRunning: memRunning,
+    C: C,
+    t: t,
+    onToggleMem: setMemRunning
   }) : activeTab === 'WEBSOCKET' ? /*#__PURE__*/_react.default.createElement(_WebSocketPanel.default, {
     logs: logs,
     C: C,
@@ -655,6 +1212,18 @@ const DebugMonitor = ({
       setSelectedLog(log);
       setDetailTab('RESPONSE');
     }
+  }) : activeTab === 'NOTIFICATIONS' ? /*#__PURE__*/_react.default.createElement(_NotificationPanel.default, {
+    C: C,
+    t: t
+  }) : activeTab === 'NAVFLOW' ? /*#__PURE__*/_react.default.createElement(_NavigationFlowPanel.default, {
+    C: C,
+    t: t
+  }) : activeTab === 'NETWORK' && showWaterfall ? /*#__PURE__*/_react.default.createElement(_TimelinePanel.default, {
+    logs: filteredLogs,
+    C: C,
+    t: t,
+    enabled: showWaterfall,
+    onToggle: () => setShowWaterfall(false)
   }) : /*#__PURE__*/_react.default.createElement(_reactNative.FlatList, {
     ref: flatListRef,
     data: filteredLogs,
@@ -708,9 +1277,14 @@ const DebugMonitor = ({
         paddingTop: top,
         paddingBottom: bottom
       }]
-    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
-      style: styles.detailSheet
-    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Animated.View, _extends({
+      style: [styles.detailSheet, {
+        transform: [{
+          translateY: detailTranslateY
+        }],
+        opacity: detailOpacity
+      }]
+    }, detailPanResponder.panHandlers), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: styles.detailHandle
     }), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
       style: styles.detailHeader
@@ -769,7 +1343,56 @@ const DebugMonitor = ({
       }
     }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
       style: styles.detailDropdownText
-    }, t.shareCurl)), customActions?.map((action, i) => /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+    }, t.shareCurl)), selectedLog?.url && /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      accessibilityRole: "menuitem",
+      style: styles.detailDropdownItem,
+      onPress: () => {
+        if (selectedLog) handleReplayRequest(selectedLog);
+        setShowMenu(false);
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.detailDropdownText
+    }, t.replayRequest)), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      accessibilityRole: "menuitem",
+      style: styles.detailDropdownItem,
+      onPress: () => {
+        if (selectedLog) {
+          const next = new Set(bookmarkedIds);
+          if (next.has(selectedLog.id)) {
+            next.delete(selectedLog.id);
+          } else {
+            next.add(selectedLog.id);
+          }
+          setBookmarkedIds(next);
+        }
+        setShowMenu(false);
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: styles.detailDropdownText
+    }, selectedLog && bookmarkedIds.has(selectedLog.id) ? '★ ' + t.bookmark : '☆ ' + t.bookmark)), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      accessibilityRole: "menuitem",
+      style: styles.detailDropdownItem,
+      onPress: () => {
+        if (selectedLog) {
+          if (compareIds.includes(selectedLog.id)) {
+            setCompareIds(compareIds.filter(id => id !== selectedLog.id));
+          } else if (compareIds.length === 0) {
+            setCompareIds([selectedLog.id]);
+          } else if (compareIds.length === 1) {
+            setCompareIds([compareIds[0], selectedLog.id]);
+            setShowCompareModal(true);
+          } else {
+            setCompareIds([selectedLog.id]);
+          }
+        }
+        setSelectedLog(null);
+        setShowMenu(false);
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: [styles.detailDropdownText, compareIds.includes(selectedLog?.id || '') ? {
+        color: C.primary
+      } : undefined]
+    }, t.selectForCompare)), customActions?.map((action, i) => /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
       key: `ca-${i}`,
       accessibilityRole: "menuitem",
       style: styles.detailDropdownItem,
@@ -941,6 +1564,293 @@ const DebugMonitor = ({
         height: 100
       }
     }))));
+  })()), /*#__PURE__*/_react.default.createElement(_reactNative.Modal, {
+    visible: showCompareModal,
+    animationType: "slide",
+    presentationStyle: "pageSheet",
+    onRequestClose: () => {
+      setShowCompareModal(false);
+      setCompareIds([]);
+    }
+  }, (() => {
+    const logA = logs.find(l => l.id === compareIds[0]);
+    const logB = logs.find(l => l.id === compareIds[1]);
+    if (!logA || !logB) {
+      return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+        style: {
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: C.background
+        }
+      }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+        style: {
+          color: C.textDim,
+          fontSize: 14
+        }
+      }, t.noDiff));
+    }
+    const statusA = logA.status?.toString() || '-';
+    const statusB = logB.status?.toString() || '-';
+    const durationA = logA.durationMs ? `${logA.durationMs}ms` : '-';
+    const durationB = logB.durationMs ? `${logB.durationMs}ms` : '-';
+    const fields = [{
+      label: 'Method',
+      valueA: logA.method || '-',
+      valueB: logB.method || '-',
+      diff: (logA.method || '') !== (logB.method || '')
+    }, {
+      label: 'URL',
+      valueA: logA.url || '-',
+      valueB: logB.url || '-',
+      diff: (logA.url || '') !== (logB.url || '')
+    }, {
+      label: 'Status',
+      valueA: statusA,
+      valueB: statusB,
+      diff: statusA !== statusB
+    }, {
+      label: 'Duration',
+      valueA: durationA,
+      valueB: durationB,
+      diff: durationA !== durationB
+    }];
+    const hasDiff = fields.some(f => f.diff);
+    const CompareRow = ({
+      field
+    }) => /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flexDirection: 'row',
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: {
+        width: 72,
+        color: C.textDim,
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 0.5
+      }
+    }, field.label), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flex: 1,
+        paddingRight: 6
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.sectionBox, field.diff ? {
+        borderColor: C.warning,
+        borderWidth: 1
+      } : undefined]
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      selectable: true,
+      style: [styles.sectionValue, field.diff ? {
+        color: C.warning
+      } : undefined],
+      numberOfLines: 4
+    }, field.valueA || '-'))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flex: 1,
+        paddingLeft: 6
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.sectionBox, field.diff ? {
+        borderColor: C.warning,
+        borderWidth: 1
+      } : undefined]
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      selectable: true,
+      style: [styles.sectionValue, field.diff ? {
+        color: C.warning
+      } : undefined],
+      numberOfLines: 4
+    }, field.valueB || '-'))));
+    return /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flex: 1,
+        backgroundColor: C.background
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: C.border
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: {
+        color: C.text,
+        fontSize: 16,
+        fontWeight: '700'
+      }
+    }, t.comparisonTitle), /*#__PURE__*/_react.default.createElement(_reactNative.TouchableOpacity, {
+      accessibilityRole: "button",
+      accessibilityLabel: t.close,
+      hitSlop: {
+        top: 8,
+        bottom: 8,
+        left: 8,
+        right: 8
+      },
+      onPress: () => {
+        setShowCompareModal(false);
+        setCompareIds([]);
+      },
+      style: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        backgroundColor: C.surfaceLight
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: {
+        color: C.primary,
+        fontSize: 13,
+        fontWeight: '700'
+      }
+    }, t.close))), /*#__PURE__*/_react.default.createElement(_reactNative.ScrollView, {
+      style: {
+        flex: 1,
+        padding: 16
+      },
+      showsVerticalScrollIndicator: false
+    }, !hasDiff ? /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        alignItems: 'center',
+        paddingVertical: 12,
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: {
+        color: C.success,
+        fontSize: 13,
+        fontWeight: '700'
+      }
+    }, t.noDiff)) : /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        alignItems: 'center',
+        paddingVertical: 12,
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: {
+        color: C.warning,
+        fontSize: 11,
+        fontWeight: '600'
+      }
+    }, "Differences highlighted in ", C.warning)), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flexDirection: 'row',
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        width: 72
+      }
+    }), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flex: 1,
+        alignItems: 'center',
+        paddingRight: 6
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: {
+        color: C.primary,
+        fontSize: 9,
+        fontWeight: '800',
+        letterSpacing: 0.5
+      }
+    }, "REQUEST A")), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flex: 1,
+        alignItems: 'center',
+        paddingLeft: 6
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: {
+        color: C.primary,
+        fontSize: 9,
+        fontWeight: '800',
+        letterSpacing: 0.5
+      }
+    }, "REQUEST B"))), fields.map(field => /*#__PURE__*/_react.default.createElement(CompareRow, {
+      key: field.label,
+      field: field
+    })), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: {
+        color: C.textDim,
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 0.5,
+        marginTop: 8,
+        marginBottom: 8
+      }
+    }, t.headers?.toUpperCase?.() || 'HEADERS'), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flexDirection: 'row',
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flex: 1,
+        paddingRight: 6
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.sectionBox]
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      selectable: true,
+      style: styles.sectionValue
+    }, logA.requestHeaders ? JSON.stringify(logA.requestHeaders, null, 2) : '-'))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flex: 1,
+        paddingLeft: 6
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.sectionBox]
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      selectable: true,
+      style: styles.sectionValue
+    }, logB.requestHeaders ? JSON.stringify(logB.requestHeaders, null, 2) : '-')))), /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      style: {
+        color: C.textDim,
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 0.5,
+        marginTop: 8,
+        marginBottom: 8
+      }
+    }, t.body?.toUpperCase?.() || 'BODY'), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flexDirection: 'row',
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flex: 1,
+        paddingRight: 6
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.sectionBox]
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      selectable: true,
+      style: styles.sectionValue
+    }, logA.requestData ? JSON.stringify(logA.requestData, null, 2) : '-'))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        flex: 1,
+        paddingLeft: 6
+      }
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: [styles.sectionBox]
+    }, /*#__PURE__*/_react.default.createElement(_reactNative.Text, {
+      selectable: true,
+      style: styles.sectionValue
+    }, logB.requestData ? JSON.stringify(logB.requestData, null, 2) : '-')))), /*#__PURE__*/_react.default.createElement(_reactNative.View, {
+      style: {
+        height: 40
+      }
+    })));
   })())), Toasts, LoadingOverlay);
 };
 exports.DebugMonitor = DebugMonitor;

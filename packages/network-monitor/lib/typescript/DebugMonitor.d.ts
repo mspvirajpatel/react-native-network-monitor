@@ -24,6 +24,9 @@ interface DebugMonitorProps {
         console?: boolean;
         websocket?: boolean;
         performance?: boolean;
+        memory?: boolean;
+        notifications?: boolean;
+        navigationFlow?: boolean;
     };
     headerTitle?: string;
     searchPlaceholder?: string;
@@ -33,7 +36,7 @@ interface DebugMonitorProps {
         onPress: (log: LogEntry) => void;
     }[];
 }
-export type TabType = 'ALL' | 'NETWORK' | 'LOGS' | 'WEBSOCKET' | 'PERFORMANCE' | 'STORE' | 'SETTINGS';
+export type TabType = 'ALL' | 'NETWORK' | 'LOGS' | 'WEBSOCKET' | 'PERFORMANCE' | 'MEMORY' | 'STORE' | 'SETTINGS' | 'NOTIFICATIONS' | 'NAVFLOW';
 export type DetailTab = 'REQUEST' | 'RESPONSE';
 /**
  * DebugMonitor
