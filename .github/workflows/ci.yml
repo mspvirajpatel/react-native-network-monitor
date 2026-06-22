@@ -26,4 +26,4 @@ jobs:
         run: npm run build --workspace=packages/network-monitor
 
       - name: Verify lib/ was generated
-        run: test -f packages/network-monitor/lib/commonjs/index.js
+        run: test -f packages/network-monitor/lib/index.js
