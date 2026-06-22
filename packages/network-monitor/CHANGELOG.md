@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1
+
+### Patch Changes
+
+- ba9059f: Fix NavigationTracker, WebSocketMonitor, NotificationMonitor, and default feature flags for reliable debugging in Expo and React Native CLI apps.
+
 All notable changes to this project will be documented in this file.
 
 ## 0.5.1 (2026-06-04)
