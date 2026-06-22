@@ -1,5 +1,5 @@
 {
-  "private": false,
+  "private": true,
   "name": "network-monitor-monorepo",
   "workspaces": [
     "packages/network-monitor",
@@ -11,7 +11,7 @@
     "release": "npx changeset publish"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.0",
+    "@changesets/cli": "^2.31.0",
     "tsup": "^8.5.1"
   }
 }

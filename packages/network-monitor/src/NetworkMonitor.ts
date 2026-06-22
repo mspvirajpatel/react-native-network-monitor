@@ -104,9 +104,11 @@ const getRedirectedUrl = (originalUrl: string): string => {
     if (_config.baseUrlMap) {
       for (const entry of _config.baseUrlMap) {
         if (original.hostname.includes(entry.from)) {
-          const replaced = new URL(originalUrl);
-          replaced.hostname = entry.to;
-          return replaced.toString();
+          const newUrl = originalUrl.replace(
+            `${original.protocol}//${original.hostname}`,
+            `${original.protocol}//${entry.to}`
+          );
+          return newUrl;
         }
       }
     }

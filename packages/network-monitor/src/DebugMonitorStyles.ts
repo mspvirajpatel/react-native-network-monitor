@@ -305,7 +305,7 @@ const styleSheet = (C: ThemeColors = DARK_COLORS) =>
 
     // ── Loading Overlay ────────────────────────────────────────────────────
     loadingOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: C.overlay,
       alignItems: 'center',
       justifyContent: 'center',

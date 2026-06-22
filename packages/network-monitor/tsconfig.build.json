@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "5.0",
+    "ignoreDeprecations": "6.0",
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "declaration": true,
@@ -16,6 +16,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "outDir": "lib/typescript",
+    "rootDir": "src",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,

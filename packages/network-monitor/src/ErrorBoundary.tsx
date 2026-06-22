@@ -45,7 +45,7 @@ export const setupGlobalErrorHandlers = () => {
     }
   });
 
-  if (typeof global !== 'undefined') {
+  if (typeof globalThis !== 'undefined') {
     const originalOnError = (globalThis as Record<string, unknown>).onerror;
     (globalThis as Record<string, unknown>).onerror = (message: string, source?: string, lineno?: number, colno?: number, error?: Error) => {
       Logger.logInfo(`[GLOBAL ERROR] ${message} at ${source}:${lineno}:${colno}`);
