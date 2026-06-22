@@ -32,7 +32,7 @@ jobs:
         with:
           title: "chore: version packages"
           commit: "chore: version packages"
-          publish: npm publish --workspace=packages/network-monitor --access public
+          publish: cd packages/network-monitor && npm publish --access public
           version: npx changeset version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
