@@ -18,7 +18,8 @@
     "build": "bob build",
     "prepare": "bob build",
     "typescript": "tsc --noEmit",
-    "lint": "eslint \"src/**/*.{ts,tsx}\""
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "release": "npm run build && npm publish --access public"
   },
   "keywords": [
     "react-native",

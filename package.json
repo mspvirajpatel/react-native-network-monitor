@@ -4,5 +4,13 @@
   "workspaces": [
     "packages/network-monitor",
     "examples/*"
-  ]
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=packages/network-monitor",
+    "typecheck": "npm run typescript --workspace=packages/network-monitor",
+    "release": "npx changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0"
+  }
 }

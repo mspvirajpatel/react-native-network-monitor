@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typescript --workspace=packages/network-monitor
+
+      - name: Build
+        run: npm run build --workspace=packages/network-monitor
+
+      - name: Verify lib/ was generated
+        run: test -f packages/network-monitor/lib/commonjs/index.js
