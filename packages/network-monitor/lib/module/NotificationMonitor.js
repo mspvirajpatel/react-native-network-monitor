@@ -27,8 +27,10 @@ export const logNotification = notification => {
   };
   _notificationHistory.unshift(entry);
   if (_notificationHistory.length > 200) _notificationHistory.pop();
-  Logger.logInfo(`[NOTIFICATION] ${notification.title || 'No title'}`, {
-    notification: entry
+  Logger.logNotification({
+    title: notification.title,
+    body: notification.body,
+    source: notification.source
   });
   notify();
 };

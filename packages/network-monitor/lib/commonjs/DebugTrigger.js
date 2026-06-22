@@ -188,6 +188,8 @@ const DebugTrigger = ({
     errorBoundary: true,
     performance: true,
     persistence: true,
+    notifications: true,
+    navigationFlow: true,
     ...featuresProp
   };
   const [clicks, setClicks] = (0, _react.useState)(0);

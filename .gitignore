@@ -92,3 +92,8 @@ svg-source/*.svg
 
 docs/
 builds/
+
+# Build artifacts
+**/lib/
+
+.understand-anything/**

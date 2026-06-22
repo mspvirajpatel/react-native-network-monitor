@@ -39,6 +39,12 @@ const NavigationFlowPanel = ({
   });
   const [selectedNode, setSelectedNode] = (0, _react.useState)(null);
   (0, _react.useEffect)(() => {
+    const existing = (0, _NavigationTracker.getNavigationEvents)();
+    if (existing.length > 0) {
+      setEvents(existing);
+      setFlow((0, _NavigationTracker.getNavigationFlow)());
+      setStats((0, _NavigationTracker.getScreenStats)());
+    }
     const unsub = (0, _NavigationTracker.subscribeToNavigation)(newEvents => {
       setEvents(newEvents);
       setFlow((0, _NavigationTracker.getNavigationFlow)());

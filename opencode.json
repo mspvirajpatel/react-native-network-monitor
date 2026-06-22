@@ -1,0 +1,20 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "mode": "code"
+  },
+  "commands": {
+    "build": "npm run build --workspace=packages/network-monitor",
+    "lint": "npm run lint --workspace=packages/network-monitor",
+    "typecheck": "npm run typescript --workspace=packages/network-monitor",
+    "test": "npm run test --workspace=packages/network-monitor"
+  },
+  "subagent": {
+    "explore": {
+      "commands": {
+        "read": "cat"
+      }
+    }
+  },
+  "plugin": ["./.opencode/plugins/ponytail.mjs"]
+}

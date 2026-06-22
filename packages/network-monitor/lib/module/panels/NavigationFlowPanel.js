@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import styleSheet from '../DebugMonitorStyles';
-import { subscribeToNavigation, getNavigationFlow, clearNavigationEvents, logNavigationEvent, getScreenStats } from '../NavigationTracker';
+import { subscribeToNavigation, getNavigationEvents, getNavigationFlow, clearNavigationEvents, logNavigationEvent, getScreenStats } from '../NavigationTracker';
 const METHOD_COLORS = {
   push: '#38BDF8',
   pop: '#F97316',
@@ -31,6 +31,12 @@ const NavigationFlowPanel = ({
   });
   const [selectedNode, setSelectedNode] = useState(null);
   useEffect(() => {
+    const existing = getNavigationEvents();
+    if (existing.length > 0) {
+      setEvents(existing);
+      setFlow(getNavigationFlow());
+      setStats(getScreenStats());
+    }
     const unsub = subscribeToNavigation(newEvents => {
       setEvents(newEvents);
       setFlow(getNavigationFlow());

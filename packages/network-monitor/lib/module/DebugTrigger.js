@@ -183,6 +183,8 @@ export const DebugTrigger = ({
     errorBoundary: true,
     performance: true,
     persistence: true,
+    notifications: true,
+    navigationFlow: true,
     ...featuresProp
   };
   const [clicks, setClicks] = useState(0);

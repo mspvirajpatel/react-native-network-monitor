@@ -32,7 +32,7 @@ export const logNavigationEvent = event => {
   if (_events.length > 500) _events.pop();
   _lastScreen = event.screen;
   _lastTimestamp = now;
-  Logger.logInfo(`[NAV] ${event.method.toUpperCase()} → ${event.screen}`, {
+  Logger.logNavigation(event.screen, {
     navigation: entry
   });
   notify();
@@ -47,9 +47,6 @@ export const logNavigationEvent = event => {
 export const setupNavigationTracker = () => {
   if (_isTracking) return;
   _isTracking = true;
-  _events = [];
-  _lastScreen = undefined;
-  _lastTimestamp = 0;
 };
 
 /**

@@ -381,6 +381,16 @@ class DebugLogger {
    *
    * Placeholder for future initialization logic.
    */
+  logNotification(data) {
+    this.logs.unshift({
+      id: Math.random().toString(36).substring(7),
+      type: 'notification',
+      timestamp: new Date().toISOString(),
+      message: `[NOTIFICATION] ${data.title || 'No title'}`,
+      requestData: data
+    });
+    this.notify();
+  }
   logWebSocket(data) {
     const icon = data.event === 'open' ? '🔗' : data.event === 'close' ? '🔌' : data.event === 'error' ? '⚠️' : '📨';
     this.logs.unshift({

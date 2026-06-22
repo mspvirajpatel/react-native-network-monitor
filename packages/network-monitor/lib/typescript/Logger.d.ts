@@ -230,6 +230,11 @@ declare class DebugLogger {
      *
      * Placeholder for future initialization logic.
      */
+    logNotification(data: {
+        title?: string;
+        body?: string;
+        source?: string;
+    }): void;
     logWebSocket(data: {
         url: string;
         event: 'open' | 'message' | 'close' | 'error';

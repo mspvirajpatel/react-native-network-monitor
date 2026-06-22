@@ -455,6 +455,21 @@ class DebugLogger {
    *
    * Placeholder for future initialization logic.
    */
+  public logNotification(data: {
+    title?: string;
+    body?: string;
+    source?: string;
+  }) {
+    this.logs.unshift({
+      id: Math.random().toString(36).substring(7),
+      type: 'notification',
+      timestamp: new Date().toISOString(),
+      message: `[NOTIFICATION] ${data.title || 'No title'}`,
+      requestData: data,
+    });
+    this.notify();
+  }
+
   public logWebSocket(data: {
     url: string;
     event: 'open' | 'message' | 'close' | 'error';

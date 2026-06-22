@@ -7,6 +7,7 @@ import {
   type NavigationFlowNode,
   type NavigationFlowEdge,
   subscribeToNavigation,
+  getNavigationEvents,
   getNavigationFlow,
   clearNavigationEvents,
   logNavigationEvent,
@@ -38,6 +39,12 @@ const NavigationFlowPanel: React.FC<NavigationFlowPanelProps> = ({ C, t }) => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
   useEffect(() => {
+    const existing = getNavigationEvents();
+    if (existing.length > 0) {
+      setEvents(existing);
+      setFlow(getNavigationFlow());
+      setStats(getScreenStats());
+    }
     const unsub = subscribeToNavigation((newEvents) => {
       setEvents(newEvents);
       setFlow(getNavigationFlow());

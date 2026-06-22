@@ -18,6 +18,7 @@ import {
   startPerformanceMonitor,
   stopPerformanceMonitor,
   generateExportReport,
+  logNavigationEvent,
   type LanguageCode,
 } from "@mspvirajpatel/react-native-network-monitor";
 
@@ -194,6 +195,8 @@ function AppContent({
   const [, forceUpdate] = useState(0);
   const [customUrl, setCustomUrl] = useState("");
   const [calls, setCalls] = useState<{ label: string; ts: Date }[]>([]);
+  const [currentScreen, setCurrentScreen] = useState("Home");
+  const [screenStack, setScreenStack] = useState<string[]>(["Home"]);
 
   const force = () => forceUpdate((n) => n + 1);
 
@@ -391,6 +394,57 @@ function AppContent({
     log("Rejection");
     new Promise((_, r) => r(new Error("Demo")));
     Alert.alert("Rejection", "Check LOGS");
+  };
+
+  const screens = ["Home", "Profile", "Settings", "Details", "List", "Notifications"];
+
+  const navigateTo = (screen: string) => {
+    log(`Nav: ${screen}`);
+    setScreenStack((prev) => [...prev, screen]);
+    setCurrentScreen(screen);
+    logNavigationEvent({
+      screen,
+      method: "push",
+      params: { from: screenStack[screenStack.length - 1] || screen },
+    });
+  };
+
+  const goBack = () => {
+    if (screenStack.length <= 1) {
+      Alert.alert("Info", "Already at root screen");
+      return;
+    }
+    const prev = screenStack[screenStack.length - 2]!;
+    log("Nav: back");
+    setScreenStack((prev) => prev.slice(0, -1));
+    setCurrentScreen(prev);
+    logNavigationEvent({
+      screen: prev,
+      method: "pop",
+    });
+  };
+
+  const replaceWith = (screen: string) => {
+    log(`Nav: replace ${screen}`);
+    setScreenStack((prev) => [...prev.slice(0, -1), screen]);
+    setCurrentScreen(screen);
+    logNavigationEvent({
+      screen,
+      method: "replace",
+    });
+  };
+
+  const navigateViaDeepLink = () => {
+    const target = screens[Math.floor(Math.random() * screens.length)]!;
+    log(`Nav: deep link → ${target}`);
+    setScreenStack((prev) => [...prev, target]);
+    setCurrentScreen(target);
+    logNavigationEvent({
+      screen: target,
+      method: "link",
+      deepLink: `demo://app/${target.toLowerCase()}`,
+      params: { utm_source: "demo" },
+    });
   };
 
   return (
@@ -624,6 +678,93 @@ function AppContent({
               subtitle="Close"
             />
           ) : null}
+        </View>
+
+        {/* ═══ NAVIGATION FLOW ═══ */}
+        <SectionHeader title="🧭 NAVIGATION FLOW" />
+        <View style={styles.section}>
+          <Text style={styles.infoText}>
+            Current screen:{" "}
+            <Text style={{ color: "#38BDF8", fontWeight: "900" }}>
+              {currentScreen}
+            </Text>
+          </Text>
+          <Text style={styles.infoText}>
+            Stack:{" "}
+            <Text style={{ color: "#94A3B8", fontSize: 10 }}>
+              {screenStack.join(" → ")}
+            </Text>
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+            {screens.filter((s) => s !== currentScreen).slice(0, 4).map((screen) => (
+              <TouchableOpacity
+                key={screen}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                  backgroundColor: "#10B98120",
+                  borderWidth: 1,
+                  borderColor: "#10B98140",
+                }}
+                onPress={() => navigateTo(screen)}
+              >
+                <Text style={{ color: "#10B981", fontSize: 11, fontWeight: "700" }}>
+                  {screen == "Home" && currentScreen !== "Home" && screenStack.includes("Home") ? `→ ${screen}` : screen}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                paddingVertical: 8,
+                borderRadius: 8,
+                backgroundColor: "#F59E0B20",
+                borderWidth: 1,
+                borderColor: "#F59E0B40",
+                alignItems: "center",
+              }}
+              onPress={goBack}
+            >
+              <Text style={{ color: "#F59E0B", fontSize: 11, fontWeight: "700" }}>
+                ← Go Back
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                paddingVertical: 8,
+                borderRadius: 8,
+                backgroundColor: "#8B5CF620",
+                borderWidth: 1,
+                borderColor: "#8B5CF640",
+                alignItems: "center",
+              }}
+              onPress={() => replaceWith("Settings")}
+            >
+              <Text style={{ color: "#8B5CF6", fontSize: 11, fontWeight: "700" }}>
+                Replace → Settings
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={{
+              paddingVertical: 8,
+              borderRadius: 8,
+              backgroundColor: "#38BDF820",
+              borderWidth: 1,
+              borderColor: "#38BDF840",
+              alignItems: "center",
+              marginTop: 8,
+            }}
+            onPress={navigateViaDeepLink}
+          >
+            <Text style={{ color: "#38BDF8", fontSize: 11, fontWeight: "700" }}>
+              🔗 Deep Link (random screen)
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* ═══ LOGGER API ═══ */}
