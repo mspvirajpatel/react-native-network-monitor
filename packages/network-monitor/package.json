@@ -19,7 +19,8 @@
     "prepare": "bob build",
     "typescript": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "release": "npm run build && npm publish --access public"
+    "release": "npm run build && npm publish --access public",
+    "publish-package": "npm publish --access public"
   },
   "keywords": [
     "react-native",

@@ -27,14 +27,18 @@ jobs:
       - name: Build
         run: npm run build --workspace=packages/network-monitor
 
-      - name: Create Release PR or Publish
+      - name: Publish to npm
+        run: npm run publish-package --workspace=packages/network-monitor
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create Release PR
+        if: always()
         uses: changesets/action@v1
         with:
           title: "chore: version packages"
           commit: "chore: version packages"
-          publish: cd packages/network-monitor && npm publish --access public
           version: npx changeset version
+          publish: echo "already published"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
